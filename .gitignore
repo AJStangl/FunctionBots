@@ -131,3 +131,4 @@ dmypy.json
 
 .python_packages
 .vscode
+/praw.ini
