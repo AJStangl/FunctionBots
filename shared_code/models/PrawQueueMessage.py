@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 from dataclasses_serialization.json import JSONSerializer
 
@@ -8,3 +9,8 @@ class PrawQueueMessage:
 	author: str
 	subreddit: str
 	bot_username: str
+
+	def to_json(self):
+		json.dumps({
+
+		})

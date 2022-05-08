@@ -2,12 +2,10 @@
   "scriptFile": "__init__.py",
   "bindings": [
     {
-      "name": "submissionTimer",
+      "name": "commentTimer",
       "type": "timerTrigger",
       "direction": "in",
-      "schedule": "0 */5 * * * *",
-      "useMonitor": true,
-      "runOnStartup": true
+      "schedule": "0 */5 * * * *"
     }
   ]
 }
