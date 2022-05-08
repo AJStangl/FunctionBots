@@ -1,39 +1,75 @@
 import datetime
 import logging
-import asyncpraw
-import os
+
 import azure.functions as func
-from asyncpraw import Reddit
+from praw import Reddit
+from praw.models import Submission
+from praw.reddit import Comment
 
 
-async def main(mytimer: func.TimerRequest) -> None:
-	utc_timestamp = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
-
-	# TODO: In order to support multiple bots we will need to change what is below into a loop
-	logging.info(f":: Poll For Submission trigger called at {utc_timestamp}")
+def main(mytimer: func.TimerRequest) -> None:
+	logging.info(f":: Poll For Submission trigger called at {datetime.date.today()}")
 
 	reddit = get_praw_instance("LarissaBot-GPT2")
 
-	user = await reddit.user.me()
+	user = reddit.user.me()
 
 	logging.info(f":: Polling For Submissions for User {user.name}")
 
 	subs = get_subs_from_configuration()
-	print(subs)
 
-	await reddit.close()
+	logging.info(f":: Obtaining New/Incoming Submissions For Subreddit {subs}")
+
+	subreddit = reddit.subreddit(subs)
+
+	logging.info(f":: Subreddit {subreddit} connected. Obtaining Stream...")
+
+	submissions = subreddit.stream.submissions(pause_after=0)
+	comments = subreddit.stream.comments(pause_after=0)
+
+	for submission in submissions:
+		if submission is None:
+			break
+		result = process_submission_to_model(submission, user.name)
+		print(result)
+
+	for comment in comments:
+		if comment is None:
+			break
+		result = process_comment_to_model(comment, user.name)
+		print(result)
 
 
 def get_praw_instance(bot_name: str) -> Reddit:
 	logging.info(f":: Initializing Reddit Praw Instance")
-	reddit = asyncpraw.Reddit(site_name=bot_name)
+	reddit = Reddit(site_name=bot_name)
 	return reddit
 
 
-def get_recent_submissions(subreddit_name: str):
-	logging.info(f":: Obtaining New/Incoming Submissions For Subreddit {subreddit_name}")
-
-
-def get_subs_from_configuration() -> [str]:
-	subs = os.environ["SubReddit"].split(",")
+def get_subs_from_configuration() -> str:
+	subs = "+".join("CoopAndPabloPlayhouse,SubSimGPT2Interactive".split(","))
 	return subs
+
+
+def process_submission_to_model(submission: Submission, bot_username: str) -> dict:
+	record_dict = {
+		'source_name': submission.name,
+		'created_utc': submission.created_utc,
+		'author': getattr(submission.author, 'name', ''),
+		'subreddit': submission.subreddit.display_name,
+		'bot_username': bot_username
+	}
+	return record_dict
+
+
+def process_comment_to_model(comment: Comment, bot_username: str) -> dict:
+	record_dict = {
+		'source_name': comment.name,
+		'created_utc': comment.created_utc,
+		'author': getattr(comment.author, 'name', ''),
+		'subreddit': comment.subreddit.display_name,
+		'bot_username': bot_username
+	}
+	return record_dict
+
+
