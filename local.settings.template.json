@@ -3,6 +3,7 @@
   "Values": {
     "FUNCTIONS_WORKER_RUNTIME": "python",
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-    "SubReddit": "CoopAndPabloPlayHouse"
+    "SubReddit": "CoopAndPabloPlayHouse",
+    "Bot": "LarissaBot-GPT2"
   }
 }
