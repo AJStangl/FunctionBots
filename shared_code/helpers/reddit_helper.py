@@ -26,8 +26,9 @@ class RedditHelper:
 		return os.environ["Bot"]
 
 	@staticmethod
-	def map_base_to_message(thing: RedditBase, bot_username: str) -> PrawQueueMessage:
+	def map_base_to_message(thing: RedditBase, bot_username: str, input_type: str) -> PrawQueueMessage:
 		message = PrawQueueMessage(
+			input_type = input_type,
 			source_name=thing.name,
 			created_utc=thing.created_utc,
 			author=getattr(thing.author, 'name', ''),

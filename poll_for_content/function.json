@@ -1,0 +1,20 @@
+{
+  "scriptFile": "__init__.py",
+  "bindings": [
+    {
+      "name": "contentTimer",
+      "type": "timerTrigger",
+      "direction": "in",
+      "schedule": "0 */1 * * * *",
+      "useMonitor": true,
+      "runOnStartup": true
+    },
+     {
+      "type": "queue",
+      "direction": "out",
+      "name": "msg",
+      "queueName": "stream-input-content-queue",
+      "connection": "AzureWebJobsStorage"
+    }
+  ]
+}
