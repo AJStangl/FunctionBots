@@ -52,11 +52,11 @@ def main(contentTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> No
 
 	if len(messages) > 0:
 		msg.set(messages)
+		logging.info(":: Sent Message Batch Successfully")
 		return
 
 	msg.set([])
-	logging.info(":: Sent Message Batch Successfully")
-	logging.info(f":: Process Complete")
+	logging.info(f":: Process Complete, no new inputs")
 	return
 
 
@@ -65,10 +65,10 @@ def process_thing(submission: RedditBase, user: Redditor, input_type: str, proxy
 	row_key = mapped_submission.source_name.split("_")[1]
 
 	partition_key = mapped_submission.get_partition_key()
-	entity = proxy.query("staging", partition_key, row_key)
+	entity = proxy.query("tracking", partition_key, row_key)
 
 	if entity:
-		logging.info(":: Skipping Seen Message")
+		logging.info(f":: Skipping Seen Message for {partition_key} - {row_key}")
 		return None
 	return mapped_submission.to_json()
 

@@ -11,9 +11,16 @@
     {
       "name": "message",
       "type": "table",
-      "tableName": "staging",
+      "tableName": "tracking",
       "connection": "AzureWebJobsStorage",
       "direction": "out"
+    },
+     {
+      "type": "queue",
+      "direction": "out",
+      "name": "msg",
+      "queueName": "text-generation-queue",
+      "connection": "AzureWebJobsStorage"
     }
   ]
 }

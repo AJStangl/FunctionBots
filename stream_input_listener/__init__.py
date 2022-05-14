@@ -1,5 +1,6 @@
 import logging
 import json
+import typing
 
 import azure.functions as func
 from azure.functions import QueueMessage
@@ -8,7 +9,7 @@ from shared_code.models.praw_content_message import PrawQueueMessage
 from shared_code.models.table_data import InputTableRecord
 
 
-def main(messageIn: QueueMessage, message: func.Out[str]) -> None:
+def main(messageIn: QueueMessage, message: func.Out[str], msg: func.Out[typing.List[str]]) -> None:
 	logging.info(f":: Message Obtained For Processing")
 
 	json_body = messageIn.get_json()
@@ -19,7 +20,10 @@ def main(messageIn: QueueMessage, message: func.Out[str]) -> None:
 
 	message.set(json.dumps(output))
 
-	logging.info(":: New Entry Entered")
+	logging.info(f":: New Entry Entered for {table_record.id}")
+
+	# TODO: Create Message Class For Text Generation Flow
+	msg.set([json.dumps(output)])
 
 	return
 
