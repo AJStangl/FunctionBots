@@ -3,7 +3,7 @@ import logging
 
 from praw import Reddit
 from praw.models.reddit.base import RedditBase
-from shared_code.models.PrawQueueMessage import PrawQueueMessage
+from shared_code.models.praw_content_message import PrawQueueMessage
 
 
 class RedditHelper:
@@ -28,7 +28,7 @@ class RedditHelper:
 	@staticmethod
 	def map_base_to_message(thing: RedditBase, bot_username: str, input_type: str) -> PrawQueueMessage:
 		message = PrawQueueMessage(
-			input_type = input_type,
+			input_type=input_type,
 			source_name=thing.name,
 			created_utc=thing.created_utc,
 			author=getattr(thing.author, 'name', ''),

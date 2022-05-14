@@ -1,0 +1,19 @@
+{
+  "scriptFile": "__init__.py",
+  "bindings": [
+    {
+      "name": "messageIn",
+      "type": "queueTrigger",
+      "direction": "in",
+      "queueName": "stream-input-content-queue",
+      "connection": "AzureWebJobsStorage"
+    },
+    {
+      "name": "message",
+      "type": "table",
+      "tableName": "staging",
+      "connection": "AzureWebJobsStorage",
+      "direction": "out"
+    }
+  ]
+}

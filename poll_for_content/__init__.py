@@ -1,5 +1,4 @@
 import datetime
-import json
 import logging
 import typing
 import azure.functions as func
@@ -7,11 +6,12 @@ from praw.models.reddit.base import RedditBase
 from praw.reddit import Redditor
 
 from shared_code.helpers.reddit_helper import RedditHelper
-from shared_code.queue_utility.service_proxy import QueueServiceProxy
+from shared_code.queue_utility.table_proxy import TableServiceProxy
 
 
 def main(contentTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> None:
 	logging.info(f":: Poll For Submission trigger called at {datetime.date.today()}")
+	proxy = TableServiceProxy()
 
 	bot_name = RedditHelper.get_bot_name()
 
@@ -25,8 +25,6 @@ def main(contentTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> No
 
 	logging.info(f":: Obtaining New/Incoming Submissions For Subreddit: {subs}")
 
-	# queue_service = QueueServiceProxy()
-
 	subreddit = reddit.subreddit(subs)
 
 	logging.info(f":: Subreddit {subreddit} connected. Obtaining Stream...")
@@ -39,25 +37,38 @@ def main(contentTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> No
 	for submission in submissions:
 		if submission is None:
 			break
-		m = process_thing(submission, user, "Submission")
-		messages.append(m)
+		m = process_thing(submission, user, "Submission", proxy)
+		if m is not None:
+			messages.append(m)
 
 	comments = subreddit.stream.comments(pause_after=0)
 
 	for comment in comments:
 		if comment is None:
 			break
-		m = process_thing(comment, user, "Comment")
-		messages.append(m)
+		m = process_thing(comment, user, "Comment", proxy)
+		if m is not None:
+			messages.append(m)
 
-	msg.set(messages)
+	if len(messages) > 0:
+		msg.set(messages)
+		return
+
+	msg.set([])
 	logging.info(":: Sent Message Batch Successfully")
 	logging.info(f":: Process Complete")
-
 	return
 
 
-def process_thing(submission: RedditBase, user: Redditor, input_type: str) -> str:
+def process_thing(submission: RedditBase, user: Redditor, input_type: str, proxy: TableServiceProxy) -> str:
 	mapped_submission = RedditHelper.map_base_to_message(submission, user.name, input_type)
+	row_key = mapped_submission.source_name.split("_")[1]
+
+	partition_key = mapped_submission.get_partition_key()
+	entity = proxy.query("staging", partition_key, row_key)
+
+	if entity:
+		logging.info(":: Skipping Seen Message")
+		return None
 	return mapped_submission.to_json()
 
