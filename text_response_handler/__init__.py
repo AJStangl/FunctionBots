@@ -5,6 +5,8 @@ from typing import Optional
 import azure.functions as func
 import ftfy
 import codecs
+
+from shared_code.models.table_data import TableRecord
 from shared_code.storage_proxies.table_proxy import TableServiceProxy
 from shared_code.helpers.reddit_helper import RedditHelper
 
@@ -16,40 +18,31 @@ def main(message: func.QueueMessage) -> None:
 
 	message_json = message.get_body().decode('utf-8')
 
-	message_json = json.loads(message_json)
+	incoming_message = json.loads(message_json, object_hook=lambda d: TableRecord(**d))
 
-	partition_key = message_json["PartitionKey"]
+	instance = helper.get_praw_instance(bot_name=incoming_message.responding_bot)
 
-	row_key = message_json["RowKey"]
+	prompt = incoming_message.text_generation_prompt
 
-	split_key = partition_key.split("|")
-
-	bot_name = split_key[1]
-
-	response_to_id = message_json['id']
-
-	prompt = message_json["text_generation_prompt"]
-	response = message_json["text_generation_response"]
-
-	instance = helper.get_praw_instance(bot_name=bot_name)
+	response = incoming_message.text_generation_response
 
 	foo = extract_reply_from_generated_text(prompt, response)
 
-	if message_json["input_type"] == "comments":
-		logging.info(f":: Replying to Comment - {response_to_id}")
-		comment_instance = instance.comment(id=response_to_id)
+	if incoming_message.input_type == "Comment":
+		logging.info(f":: Replying to Comment From {incoming_message.author}")
+		comment_instance = instance.comment(id=incoming_message.id)
 		comment_instance.reply(foo)
 
 	else:
-		logging.info(f":: Replying to Submission - {response_to_id}")
-		submission_instance = instance.submission(id=response_to_id)
-		foo = extract_reply_from_generated_text(prompt, response)
+		logging.info(f":: Replying to Submission From {incoming_message.author}")
+		submission_instance = instance.submission(id=incoming_message.id)
+		foo = extract_reply_from_generated_text(incoming_message.text_generation_prompt, incoming_message.text_generation_response)
 		submission_instance.reply(foo)
 
-	logging.info(f":: Setting entity to Read - {partition_key}")
-	entity = client.get_entity(partition_key, row_key)
+	entity = client.get_entity(incoming_message.PartitionKey, incoming_message.RowKey)
 
 	entity["has_responded"] = True
+
 	client.update_entity(entity)
 
 	return None

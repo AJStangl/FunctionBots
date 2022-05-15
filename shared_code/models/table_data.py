@@ -1,6 +1,11 @@
-class InputTableRecord:
-	partition_key: str
-	row_key: str
+from dataclasses import dataclass, asdict
+import json
+
+
+@dataclass
+class TableRecord:
+	PartitionKey: str
+	RowKey: str
 	id: str
 	name_id: str
 	subreddit: str
@@ -12,26 +17,20 @@ class InputTableRecord:
 	text_generation_response: str
 	has_responded: bool
 
-	def __init__(self):
-		return
+	@property
+	def __dict__(self):
+		"""
+		get a python dictionary
+		"""
+		return asdict(self)
 
-	def to_dictionary(self) -> dict:
-		record_dict = {
-			'PartitionKey': self.partition_key,
-			'RowKey': self.row_key,
-			'id': self.id,
-			'name_id': self.name_id,
-			'subreddit': self.subreddit,
-			'input_type': self.input_type,
-			'content_date_submitted_utc': self.content_date_submitted_utc,
-			'author': self.author,
-			'responding_bot': self.responding_bot,
-			'text_generation_prompt': self.text_generation_prompt,
-			'text_generation_response': self.text_generation_response,
-			'has_responded': self.has_responded
-		}
-		return record_dict
+	@property
+	def json(self):
+		"""
+		get the json formated string
+		"""
+		return json.dumps(self.__dict__)
 
-	def to_json(self) -> str:
-		import json
-		return json.dumps(self.to_dictionary())
+	@classmethod
+	def from_json(cls, json_key, json_string: dict):
+		return cls(**json_string[json_key])

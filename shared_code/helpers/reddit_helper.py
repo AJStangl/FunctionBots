@@ -3,8 +3,9 @@ import logging
 from typing import Optional
 
 from praw import Reddit
+from praw.models import Comment
 from praw.models.reddit.base import RedditBase
-from shared_code.models.praw_content_message import PrawQueueMessage
+from shared_code.models.table_data import TableRecord
 
 
 class RedditHelper:
@@ -35,13 +36,19 @@ class RedditHelper:
 		return os.environ["Bot"]
 
 	@staticmethod
-	def map_base_to_message(thing: RedditBase, bot_username: str, input_type: str) -> PrawQueueMessage:
-		message = PrawQueueMessage(
-			input_type=input_type,
-			source_name=thing.name,
-			created_utc=thing.created_utc,
-			author=getattr(thing.author, 'name', ''),
+	def map_base_to_message(thing: RedditBase, bot_username: str, input_type: str) -> TableRecord:
+		message = TableRecord(
+			PartitionKey=bot_username,
+			RowKey=f"{bot_username}|{input_type}|{thing.id}",
+			id=thing.id,
+			name_id=thing.id,
 			subreddit=thing.subreddit.display_name,
-			bot_username=bot_username
+			input_type=input_type,
+			content_date_submitted_utc=thing.created,
+			author=getattr(thing.author, 'name', ''),
+			responding_bot=bot_username,
+			text_generation_prompt="",
+			text_generation_response="",
+			has_responded=False
 		)
 		return message

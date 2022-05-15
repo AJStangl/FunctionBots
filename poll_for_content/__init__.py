@@ -47,10 +47,11 @@ def main(contentTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> No
 
 	logging.info(f":: Processing Stream For comments")
 	comments = subreddit.stream.comments(pause_after=0)
+
 	for comment in comments:
 		if comment is None:
 			break
-		m = process_thing(comment, user, "comments", proxy, helper)
+		m = process_thing(comment, user, "Comment", proxy, helper)
 		if m is not None:
 			messages.append(m)
 
@@ -64,21 +65,16 @@ def main(contentTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> No
 	return
 
 
-def process_thing(submission: RedditBase, user: Redditor, input_type: str, proxy: TableServiceProxy, helper: RedditHelper) -> Optional[str]:
+def process_thing(thing: RedditBase, user: Redditor, input_type: str, proxy: TableServiceProxy, helper: RedditHelper) -> Optional[str]:
+	mapped_input = helper.map_base_to_message(thing, user.name, input_type)
 
-	mapped_submission = helper.map_base_to_message(submission, user.name, input_type)
+	# Filter Out Where responding bot is the author
+	if mapped_input.responding_bot == mapped_input.author:
+		return None
 
-	row_key = mapped_submission.source_name.split("_")[1]
+	# Filter existing entities
+	if proxy.entity_exists(mapped_input):
+		return None
 
-	partition_key = mapped_submission.get_partition_key()
-
-	try:
-		entity = proxy.get_client().get_entity(partition_key, row_key)
-		if entity:
-			logging.info(f":: Skipping Seen Message for {partition_key} - {row_key}")
-			return None
-
-	except Exception:
-		pass
-	return mapped_submission.to_json()
+	return mapped_input.json
 

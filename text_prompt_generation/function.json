@@ -5,14 +5,14 @@
       "name": "message",
       "type": "queueTrigger",
       "direction": "in",
-      "queueName": "text-generation-queue",
+      "queueName": "content-queue",
       "connection": "AzureWebJobsStorage"
     },
     {
       "type": "queue",
       "direction": "out",
       "name": "promptMessage",
-      "queueName": "prompt-generation-queue",
+      "queueName": "prompt-queue",
       "connection": "AzureWebJobsStorage"
     }
   ]

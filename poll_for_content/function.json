@@ -11,7 +11,7 @@
       "type": "queue",
       "direction": "out",
       "name": "msg",
-      "queueName": "stream-input-content-queue",
+      "queueName": "content-queue",
       "connection": "AzureWebJobsStorage"
     }
   ]

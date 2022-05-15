@@ -1,6 +1,11 @@
+import json
+
 from azure.core.credentials import AzureNamedKeyCredential
 from azure.data.tables import TableServiceClient, TableClient
 import logging
+
+from shared_code.models.table_data import TableRecord
+
 
 class TableServiceProxy(object):
 
@@ -19,5 +24,17 @@ class TableServiceProxy(object):
 
 	def get_client(self) -> TableClient:
 		return self.service.get_table_client("tracking")
+
+	def entity_exists(self, entity: TableRecord) -> bool:
+		client = self.get_client()
+		raw = entity.json
+		try:
+			result = client.get_entity(partition_key=entity.PartitionKey, row_key=entity.RowKey)
+			if result:
+				return True
+		except Exception:
+			client.create_entity(entity=json.loads(raw))
+			return False
+
 
 
