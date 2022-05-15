@@ -5,10 +5,21 @@
     "version": "[2.*, 3.0.0)"
   },
   "extensions": {
-        "queues": {
-           "batchSize": 16,
-           "newBatchThreshold": 4
-        },
-        "tables": {}
+    "queues": {
+      "batchSize": 8,
+      "newBatchThreshold": 4
+    },
+    "tables": {}
+  },
+  "logging": {
+    "fileLoggingMode": "never",
+    "logLevel": {
+      "default": "Information",
+      "Host": "None",
+      "Function": "Information",
+      "Host.Aggregator": "None",
+      "azure.data": "None",
+      "azure.core.pipeline.policies.http_logging_policy": "Debug"
     }
+  }
 }

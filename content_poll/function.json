@@ -5,11 +5,9 @@
       "name": "contentTimer",
       "type": "timerTrigger",
       "direction": "in",
-      "schedule": "0 */1 * * * *",
-      "useMonitor": true,
-      "runOnStartup": true
+      "schedule": "0 */1 * * * *"
     },
-     {
+    {
       "type": "queue",
       "direction": "out",
       "name": "msg",

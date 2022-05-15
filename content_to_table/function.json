@@ -9,13 +9,6 @@
       "connection": "AzureWebJobsStorage"
     },
     {
-      "name": "message",
-      "type": "table",
-      "tableName": "tracking",
-      "connection": "AzureWebJobsStorage",
-      "direction": "out"
-    },
-     {
       "type": "queue",
       "direction": "out",
       "name": "msg",

@@ -8,15 +8,15 @@ from praw.models.reddit.base import RedditBase
 from praw.reddit import Redditor
 
 from shared_code.helpers.reddit_helper import RedditHelper
-from shared_code.queue_utility.table_proxy import TableServiceProxy
-
+from shared_code.storage_proxies.table_proxy import TableServiceProxy
 
 def main(contentTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> None:
 
 	helper = RedditHelper()
+
 	logging.info(f":: Poll For Submission trigger called at {datetime.date.today()}")
+
 	proxy = TableServiceProxy()
-	helper = RedditHelper()
 
 	bot_name = helper.get_bot_name()
 
@@ -72,13 +72,13 @@ def process_thing(submission: RedditBase, user: Redditor, input_type: str, proxy
 
 	partition_key = mapped_submission.get_partition_key()
 
-	entity = proxy.query("tracking", partition_key, row_key)
-
-	if entity:
-		if entity["text_generation_prompt"] != "" and entity["text_generation_response"] != "":
+	try:
+		entity = proxy.get_client().get_entity(partition_key, row_key)
+		if entity:
 			logging.info(f":: Skipping Seen Message for {partition_key} - {row_key}")
 			return None
-		logging.info(":: Cleaning Bad Job For Re-Queue")
-		proxy.get_client().delete_entity(entity)
+
+	except Exception:
+		pass
 	return mapped_submission.to_json()
 

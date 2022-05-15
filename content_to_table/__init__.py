@@ -7,24 +7,40 @@ from azure.functions import QueueMessage
 
 from shared_code.models.praw_content_message import PrawQueueMessage
 from shared_code.models.table_data import InputTableRecord
+from shared_code.storage_proxies.table_proxy import TableServiceProxy
 
 
-def main(messageIn: QueueMessage, message: func.Out[str], msg: func.Out[typing.List[str]]) -> None:
+def main(messageIn: QueueMessage, msg: func.Out[str]) -> None:
 	logging.info(f":: Message Obtained For Processing")
+
+	service = TableServiceProxy().service
+	client = service.get_table_client("tracking")
 
 	json_body = messageIn.get_json()
 
+	split_name = json_body["source_name"].split("_")
+	#TODO: Fix this
+	# f"{self.subreddit}|{self.bot_username}"
+	# record_dict = {
+	# 	'PartitionKey': self.partition_key,
+	# 	'RowKey': split_name[1],
+	# 	'id': self.id,
+	# 	'name_id': self.name_id,
+	# 	'subreddit': self.subreddit,
+	# 	'input_type': self.input_type,
+	# 	'content_date_submitted_utc': self.content_date_submitted_utc,
+	# 	'author': self.author,
+	# 	'responding_bot': self.responding_bot,
+	# 	'text_generation_prompt': self.text_generation_prompt,
+	# 	'text_generation_response': self.text_generation_response,
+	# 	'has_responded': self.has_responded
+	# }
+
 	table_record = process_message(json_body)
 
-	output = table_record.to_dictionary()
-
-	message.set(json.dumps(output))
-
-	logging.info(f":: New Entry Entered for {table_record.id}")
-
-	msg.set([json.dumps(output)])
-
-	return
+	if table_record["author"] == table_record["responding_bot"]:
+		logging.info(":: Skipping Rely To Self")
+		return
 
 
 def process_message(queue_message: dict[str]) -> InputTableRecord:

@@ -1,12 +1,12 @@
 import json
-import logging
-from shared_code.generators.text.model_text_generator import ModelTextGenerator
+
 import azure.functions as func
 
-from shared_code.queue_utility.table_proxy import TableServiceProxy
+from shared_code.generators.text.model_text_generator import ModelTextGenerator
+from shared_code.storage_proxies.table_proxy import TableServiceProxy
 
 
-def main(message: func.QueueMessage) -> None:
+def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> None:
 	message_json = message.get_body().decode('utf-8')
 
 	message_json = json.loads(message_json)
@@ -27,5 +27,4 @@ def main(message: func.QueueMessage) -> None:
 	entity["text_generation_response"] = result
 	client.update_entity(entity)
 
-
-
+	responseMessage.set(json.dumps(entity))

@@ -1,8 +1,12 @@
 from azure.core.credentials import AzureNamedKeyCredential
 from azure.data.tables import TableServiceClient, TableClient
-
+import logging
 
 class TableServiceProxy(object):
+
+	logger = logging.getLogger('azure.core.pipeline.policies.http_logging_policy')
+	logger.setLevel(logging.WARNING)
+
 	def __init__(self):
 		# Note: These values are specific to running the azure storage emulator locally.
 		self.account_name = "devstoreaccount1"
@@ -15,13 +19,5 @@ class TableServiceProxy(object):
 
 	def get_client(self) -> TableClient:
 		return self.service.get_table_client("tracking")
-
-	def query(self, table_name, partition_name, row_key):
-		table_client = self.service.get_table_client(table_name=table_name)
-		try:
-			entity = table_client.get_entity(partition_name, row_key)
-			return entity
-		except Exception:
-			return None
 
 
