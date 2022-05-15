@@ -1,5 +1,5 @@
 from azure.core.credentials import AzureNamedKeyCredential
-from azure.data.tables import TableServiceClient
+from azure.data.tables import TableServiceClient, TableClient
 
 
 class TableServiceProxy(object):
@@ -12,6 +12,9 @@ class TableServiceProxy(object):
 			credential=self.credential,
 			endpoint="http://127.0.0.1:10002/devstoreaccount1"
 		)
+
+	def get_client(self) -> TableClient:
+		return self.service.get_table_client("tracking")
 
 	def query(self, table_name, partition_name, row_key):
 		table_client = self.service.get_table_client(table_name=table_name)

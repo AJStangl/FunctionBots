@@ -75,7 +75,10 @@ def process_thing(submission: RedditBase, user: Redditor, input_type: str, proxy
 	entity = proxy.query("tracking", partition_key, row_key)
 
 	if entity:
-		logging.info(f":: Skipping Seen Message for {partition_key} - {row_key}")
-		return None
+		if entity["text_generation_prompt"] != "" and entity["text_generation_response"] != "":
+			logging.info(f":: Skipping Seen Message for {partition_key} - {row_key}")
+			return None
+		logging.info(":: Cleaning Bad Job For Re-Queue")
+		proxy.get_client().delete_entity(entity)
 	return mapped_submission.to_json()
 
