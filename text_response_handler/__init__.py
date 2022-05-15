@@ -5,12 +5,15 @@ from typing import Optional
 import azure.functions as func
 import ftfy
 import codecs
+import datetime
 
 from shared_code.models.table_data import TableRecord
 from shared_code.storage_proxies.table_proxy import TableServiceProxy
 from shared_code.helpers.reddit_helper import RedditHelper
 
 def main(message: func.QueueMessage) -> None:
+
+	logging.info(f":: Trigger For Reply Handler Generation called at {datetime.date.today()}")
 
 	service = TableServiceProxy().service
 	client = service.get_table_client("tracking")
@@ -29,12 +32,12 @@ def main(message: func.QueueMessage) -> None:
 	foo = extract_reply_from_generated_text(prompt, response)
 
 	if incoming_message.input_type == "Comment":
-		logging.info(f":: Replying to Comment From {incoming_message.author}")
+		logging.info(f":: Replying to Comment From {incoming_message.author} in {incoming_message.subreddit}")
 		comment_instance = instance.comment(id=incoming_message.id)
 		comment_instance.reply(foo)
 
 	else:
-		logging.info(f":: Replying to Submission From {incoming_message.author}")
+		logging.info(f":: Replying to Submission From {incoming_message.author} in {incoming_message.subreddit}")
 		submission_instance = instance.submission(id=incoming_message.id)
 		foo = extract_reply_from_generated_text(incoming_message.text_generation_prompt, incoming_message.text_generation_response)
 		submission_instance.reply(foo)

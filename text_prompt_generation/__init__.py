@@ -1,7 +1,7 @@
 import json
 import logging
 from types import SimpleNamespace
-
+import datetime
 import azure.functions as func
 
 from shared_code.helpers.reddit_helper import RedditHelper
@@ -9,6 +9,8 @@ from shared_code.models.table_data import TableRecord
 from shared_code.helpers.tagging import Tagging
 
 def main(message: func.QueueMessage, promptMessage: func.Out[str]) -> None:
+
+	logging.info(f":: Trigger For Text Prompt Generation called at {datetime.date.today()}")
 
 	message_json = message.get_body().decode('utf-8')
 

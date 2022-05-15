@@ -1,6 +1,6 @@
 import json
 import logging
-
+import datetime
 import azure.functions as func
 
 from shared_code.generators.text.model_text_generator import ModelTextGenerator
@@ -9,6 +9,8 @@ from shared_code.storage_proxies.table_proxy import TableServiceProxy
 
 
 def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> None:
+
+	logging.info(f":: Trigger For Model Generation called at {datetime.date.today()}")
 
 	message_json = message.get_body().decode('utf-8')
 

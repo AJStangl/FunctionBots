@@ -14,7 +14,7 @@ def main(contentTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> No
 
 	helper = RedditHelper()
 
-	logging.info(f":: Poll For Submission trigger called at {datetime.date.today()}")
+	logging.info(f":: Trigger For Polling Comment/Submission called at {datetime.date.today()}")
 
 	proxy = TableServiceProxy()
 
