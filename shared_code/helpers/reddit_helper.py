@@ -1,5 +1,6 @@
 import os
 import logging
+from typing import Optional
 
 from praw import Reddit
 from praw.models.reddit.base import RedditBase
@@ -8,17 +9,25 @@ from shared_code.models.praw_content_message import PrawQueueMessage
 
 class RedditHelper:
 	def __init__(self):
-		pass
+		self.instance: dict[str, Reddit] = dict()
 
 	@staticmethod
 	def get_subs_from_configuration() -> str:
 		subs = "+".join(os.environ["SubReddit"].split(","))
 		return subs
 
-	@staticmethod
-	def get_praw_instance(bot_name: str) -> Reddit:
-		logging.info(f":: Initializing Reddit Praw Instance")
+	def get_praw_instance(self, bot_name: str) -> Reddit:
+
+		cached_instance = self.instance.get(bot_name)
+
+		if cached_instance:
+			logging.info(f":: Using Cached PRAW Instance for {bot_name}")
+			return cached_instance
+
+		logging.info(f":: Initializing Reddit Praw Instance for {bot_name}")
 		reddit = Reddit(site_name=bot_name)
+		self.instance[bot_name] = reddit
+
 		return reddit
 
 	@staticmethod

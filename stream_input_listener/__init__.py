@@ -22,7 +22,6 @@ def main(messageIn: QueueMessage, message: func.Out[str], msg: func.Out[typing.L
 
 	logging.info(f":: New Entry Entered for {table_record.id}")
 
-	# TODO: Create Message Class For Text Generation Flow
 	msg.set([json.dumps(output)])
 
 	return

@@ -1,6 +1,7 @@
 from azure.core.credentials import AzureNamedKeyCredential
 from azure.data.tables import TableServiceClient
 
+
 class TableServiceProxy(object):
 	def __init__(self):
 		# Note: These values are specific to running the azure storage emulator locally.
@@ -19,4 +20,5 @@ class TableServiceProxy(object):
 			return entity
 		except Exception:
 			return None
+
 

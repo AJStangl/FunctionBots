@@ -6,8 +6,7 @@ class PrawQueueMessage(object):
 	subreddit: str
 	bot_username: str
 
-	def __init__(self, source_name: str, created_utc: str, author: str, subreddit: str, bot_username: str,
-				 input_type: str) -> object:
+	def __init__(self, source_name: str, created_utc: str, author: str, subreddit: str, bot_username: str, input_type: str) -> None:
 		self.source_name = source_name
 		self.created_utc = created_utc
 		self.author = author

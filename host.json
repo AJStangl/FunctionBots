@@ -5,7 +5,9 @@
     "version": "[2.*, 3.0.0)"
   },
   "extensions": {
-        "queues": {},
+        "queues": {
+           "batchSize": 16
+        },
         "tables": {}
     }
 }
