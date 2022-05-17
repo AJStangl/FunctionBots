@@ -132,3 +132,6 @@ dmypy.json
 .python_packages
 .vscode
 /praw.ini
+
+__azurite*
+cache_dir/

@@ -6,19 +6,8 @@
   },
   "extensions": {
     "queues": {
-      "batchSize": 4
+      "batchSize": 1
     },
     "tables": {}
-  },
-  "logging": {
-    "fileLoggingMode": "never",
-    "logLevel": {
-      "default": "Information",
-      "Host": "None",
-      "Function": "Information",
-      "Host.Aggregator": "None",
-      "azure.data": "None",
-      "azure.core.pipeline.policies.http_logging_policy": "Debug"
-    }
   }
 }
