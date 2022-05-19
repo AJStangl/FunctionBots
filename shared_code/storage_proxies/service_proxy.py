@@ -15,7 +15,8 @@ class QueueServiceProxy(object):
 	def put_message(self, queue_name: str, content) -> azure.storage.queue.models.QueueMessage:
 		return self.service.put_message(queue_name, content=content)
 
-	def ensure_created(self):
+	def ensure_created(self) -> None:
 		self.service.create_queue("content-queue")
 		self.service.create_queue("prompt-queue")
 		self.service.create_queue("reply-queue")
+		return

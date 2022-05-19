@@ -130,8 +130,9 @@ dmypy.json
 .pyre/
 
 .python_packages
-.vscode
+
 /praw.ini
 
 __azurite*
 cache_dir/
+models/

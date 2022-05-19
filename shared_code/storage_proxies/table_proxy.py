@@ -23,7 +23,7 @@ class TableServiceProxy(object):
 		)
 
 	def get_client(self) -> TableClient:
-		return self.service.get_table_client("tracking")
+		return self.service.create_table_if_not_exists("tracking")
 
 	def entity_exists(self, entity: TableRecord) -> bool:
 		client = self.get_client()

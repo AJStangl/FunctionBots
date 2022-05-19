@@ -4,6 +4,10 @@
     "FUNCTIONS_WORKER_RUNTIME": "python",
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "SubReddit": "CoopAndPablo",
-    "Bot": "LarissaBot-GPT2"
+    "Bot": "SusanBot-GPT2",
+    "Bots": {
+      "Name":"SusanBot-GPT2",
+      "SubReddit": ["CoopAndPablo"]
+    }
   }
 }
