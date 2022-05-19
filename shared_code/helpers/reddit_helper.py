@@ -1,9 +1,8 @@
 import os
 import logging
-from typing import Optional
+
 
 from praw import Reddit
-from praw.models import Comment
 from praw.models.reddit.base import RedditBase
 from shared_code.models.table_data import TableRecord
 
