@@ -17,7 +17,7 @@ class ModelTextGenerator(object):
 
 	def generate_text(self, bot_username, prompt) -> str:
 		# TODO: Get Model Path From Configuatrion For Table based on Bot Username
-		model = LanguageGenerationModel("gpt2", "C:\\Users\\Alfred.Stangl\\code\\Models\\large_flightattentdent_bot", use_cuda=False)
+		model = LanguageGenerationModel("gpt2", "models\SusanBot-GPT2", use_cuda=False)
 
 		start_time = time.time()
 
