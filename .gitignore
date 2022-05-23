@@ -136,3 +136,8 @@ dmypy.json
 __azurite*
 cache_dir/
 models/
+__blobstorage__/*
+__queuestorage__/*
+.vscode/*
+
+cache_dir/*
