@@ -21,6 +21,7 @@ def main(message: func.QueueMessage, promptMessage: func.Out[str]) -> None:
 	if incoming_message.text_generation_prompt is not None:
 		promptMessage.set(incoming_message.json)
 
+
 def process_input(incoming_message: TableRecord) -> Optional[str]:
 	helper = RedditHelper()
 	instance = helper.get_praw_instance(incoming_message.responding_bot)

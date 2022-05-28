@@ -86,10 +86,12 @@ def process_thing(thing: RedditBase, user: Redditor, input_type: str, proxy: Tab
 	if proxy.entity_exists(mapped_input):
 		return None
 
-	if not ensure_time_to_respond(2, mapped_input.content_date_submitted_utc):
-		return None
 
-	return mapped_input.json
+	if not ensure_time_to_respond(2, mapped_input.content_date_submitted_utc):
+	 	return None
+
+	return None
+	# return mapped_input.json
 
 
 def get_current_stamp() -> int:
@@ -102,6 +104,6 @@ def get_current_stamp() -> int:
 
 def ensure_time_to_respond(hour_delay: int, timestamp: int) -> bool:
 	hours_since_post = (get_current_stamp() - timestamp) / 60 / 60
-	logging.info(f"{hour_delay} {hours_since_post}")
+	logging.info(f":: Hour Delay {hour_delay} Time Since: {hours_since_post}")
 	return hour_delay > hours_since_post
 

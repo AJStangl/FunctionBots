@@ -1,65 +1,65 @@
 [
   {
     "Name": "ChadNoctorBot-GPT2",
-    "Model": "D:\\models\\large_noctor_bot_2\\",
+    "Model": "",
     "SubReddits": [
-      "CoopAndPabloPlayHouse"
+      "subsimgpt2interactive"
     ]
   },
   {
     "Name": "CoopBot-GPT2",
     "Model": "D:\\models\\large_coop_bot\\",
     "SubReddits": [
-      "CoopAndPabloPlayHouse"
+      "subsimgpt2interactive"
     ]
   },
   {
     "Name": "GaryBot-GPT2",
     "Model": "D:\\models\\large_legal_bot\\",
     "SubReddits": [
-      "CoopAndPabloPlayHouse"
+      "subsimgpt2interactive"
     ]
   },
   {
     "Name": "LarissaBot-GPT2",
     "Model": "D:\\models\\large_larissa_bot\\",
     "SubReddits": [
-      "CoopAndPabloPlayHouse"
+      "subsimgpt2interactive"
     ]
   },
   {
     "Name": "LucyLoveBot-GPT2",
     "Model": "D:\\models\\large_lucy_bot_2\\",
     "SubReddits": [
-      "CoopAndPabloPlayHouse"
+      "subsimgpt2interactive"
     ]
   },
   {
     "Name": "Pablobot-GPT2",
-    "Model": "D:\\models\\large_pablo_bot_2\\",
+    "Model": "",
     "SubReddits": [
-      "CoopAndPabloPlayHouse"
+      "subsimgpt2interactive"
     ]
   },
   {
     "Name": "ScarySteveBot-GPT2",
     "Model": "D:\\models\\large_steve_bot_3\\",
     "SubReddits": [
-      "CoopAndPabloPlayHouse"
+      "subsimgpt2interactive"
     ]
   },
   {
     "Name": "SusanBot-GPT2",
-    "Model": "D:\\models\\large_flightattentdent_bot\\",
+    "Model": "",
     "SubReddits": [
-      "CoopAndPabloPlayHouse"
+      "subsimgpt2interactive"
     ]
   },
   {
     "Name": "UpvotedBecause-GPT2",
     "Model": "D:\\models\\large_all_bot\\",
     "SubReddits": [
-      "CoopAndPabloPlayHouse"
+      "subsimgpt2interactive"
     ]
   }
 ]
