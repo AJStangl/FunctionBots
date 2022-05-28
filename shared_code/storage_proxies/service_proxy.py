@@ -7,7 +7,6 @@ from shared_code.models.azure_configuration import FunctionAppConfiguration
 class QueueServiceProxy(object):
 	def __init__(self):
 		config = FunctionAppConfiguration()
-		# Note: These values are specific to running the azure storage emulator locally.
 		self.account_name = config.account_name
 		self.account_key = config.account_key
 		self.connection_string = config.connection_string

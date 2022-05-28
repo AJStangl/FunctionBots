@@ -31,10 +31,6 @@ class RedditHelper:
 		return reddit
 
 	@staticmethod
-	def get_bot_name() -> str:
-		return os.environ["Bot"]
-
-	@staticmethod
 	def map_base_to_message(thing: RedditBase, bot_username: str, input_type: str) -> TableRecord:
 		message = TableRecord(
 			PartitionKey=bot_username,

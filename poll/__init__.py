@@ -1,4 +1,5 @@
 import datetime
+import json
 import logging
 import typing
 from typing import Optional
@@ -9,8 +10,13 @@ from praw.reddit import Redditor
 
 from shared_code.helpers.reddit_helper import RedditHelper
 from shared_code.storage_proxies.table_proxy import TableServiceProxy
+from shared_code.models.bot_configuration import BotConfiguration
 
-def main(contentTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> None:
+from datetime import timezone
+import datetime
+
+
+def main(message: func.QueueMessage, msg: func.Out[typing.List[str]]) -> None:
 
 	helper = RedditHelper()
 
@@ -18,7 +24,11 @@ def main(contentTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> No
 
 	proxy = TableServiceProxy()
 
-	bot_name = helper.get_bot_name()
+	message_json = message.get_body().decode('utf-8')
+
+	incoming_message = json.loads(message_json, object_hook=lambda d: BotConfiguration(**d))
+
+	bot_name = incoming_message.Name
 
 	reddit = helper.get_praw_instance(bot_name)
 
@@ -37,7 +47,7 @@ def main(contentTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> No
 	messages = []
 
 	logging.info(f":: Processing Stream For submissions")
-	submissions = subreddit.stream.submissions(pause_after=0)
+	submissions = subreddit.stream.submissions(pause_after=0, skip_existing=False)
 	for submission in submissions:
 		if submission is None:
 			break
@@ -46,7 +56,7 @@ def main(contentTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> No
 			messages.append(m)
 
 	logging.info(f":: Processing Stream For comments")
-	comments = subreddit.stream.comments(pause_after=0)
+	comments = subreddit.stream.comments(pause_after=0, skip_existing=False)
 
 	for comment in comments:
 		if comment is None:
@@ -76,5 +86,22 @@ def process_thing(thing: RedditBase, user: Redditor, input_type: str, proxy: Tab
 	if proxy.entity_exists(mapped_input):
 		return None
 
+	if not ensure_time_to_respond(2, mapped_input.content_date_submitted_utc):
+		return None
+
 	return mapped_input.json
+
+
+def get_current_stamp() -> int:
+	dt = datetime.datetime.now(timezone.utc)
+
+	utc_time = dt.replace(tzinfo=timezone.utc)
+	utc_timestamp = utc_time.timestamp()
+	return int(utc_timestamp)
+
+
+def ensure_time_to_respond(hour_delay: int, timestamp: int) -> bool:
+	hours_since_post = (get_current_stamp() - timestamp) / 60 / 60
+	logging.info(f"{hour_delay} {hours_since_post}")
+	return hour_delay > hours_since_post
 

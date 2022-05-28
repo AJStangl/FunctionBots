@@ -13,8 +13,6 @@ from shared_code.storage_proxies.table_proxy import TableServiceProxy
 
 def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> None:
 
-	logging.info(f":: Trigger For Model Generation called at {datetime.date.today()}")
-
 	message_json = message.get_body().decode('utf-8')
 
 	incoming_message = json.loads(message_json, object_hook=lambda d: TableRecord(**d))
@@ -24,6 +22,8 @@ def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> None:
 	bot_name = incoming_message.responding_bot
 
 	prompt = incoming_message.text_generation_prompt
+
+	logging.info(f":: Trigger For Model Generation called at {datetime.date.today()} for {bot_name}")
 
 	result = model_generator.generate_text(bot_name, prompt)
 
