@@ -1,20 +1,17 @@
 import logging
-import os
 import azure.functions as func
-import sys
 
-
+from shared_code.models.azure_configuration import FunctionAppConfiguration
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
-    from shared_code.storage_proxies.service_proxy import QueueServiceProxy
     logging.info(f':: Python HTTP trigger function processed a request.')
+    config = FunctionAppConfiguration()
+
+    print(config.account_name)
+    print(config.account_key)
+    print(config.table_endpoint)
+    print(config.queue_endpoint)
+    return func.HttpResponse("ok", status_code=200)
 
 
-    proxy = QueueServiceProxy()
-    logging.info(":: Preparing Queues")
-    proxy.ensure_created()
-
-    
-    
-    

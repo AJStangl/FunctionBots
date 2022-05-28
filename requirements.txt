@@ -1,10 +1,9 @@
-simpletransformers~=0.63.6
+simpletransformers
 torch
 detoxify
-ftfy=6.1.1
+ftfy==6.1.1
 praw==7.6.0
 sacremoses
-azure_data_tables
-azure-storage-queue==12.3.0
-azure==4.0.0
-azure-functions-durable
+azure-functions
+azure-storage-queue
+azure-data-tables
