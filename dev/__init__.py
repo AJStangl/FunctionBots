@@ -12,7 +12,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info(f':: Processing Incoming History For Bot')
     manager = BotConfigurationManager()
 
-    configs = filter(lambda x: x is not None, [filter_configuration(config) for config in manager.get_configuration()])
+    configs = filter(lambda x: x is not None, [filter_configuration(config) for config in get_configuration()])
 
     for elem in configs:
         logging.info(f":: {elem}")

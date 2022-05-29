@@ -3,6 +3,7 @@ import time
 from simpletransformers.language_generation import LanguageGenerationModel
 from shared_code.models.bot_configuration import BotConfigurationManager, BotConfiguration
 
+
 class ModelTextGenerator(object):
 	def __init__(self):
 		self.default_text_generation_parameters = {
@@ -17,8 +18,7 @@ class ModelTextGenerator(object):
 
 	def generate_text(self, bot_username, prompt) -> str:
 		start_time = time.time()
-		configs = BotConfigurationManager().get_configuration()
-		config = list(filter(lambda x: x.Name == bot_username, [c for c in configs]))[0]
+		config = BotConfigurationManager().get_configuration_by_name(bot_username)
 		try:
 			model = LanguageGenerationModel("gpt2", config.Model, use_cuda=True, cuda_device=-1)
 			output_list = model.generate(prompt=prompt, args=self.default_text_generation_parameters)

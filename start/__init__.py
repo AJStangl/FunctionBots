@@ -12,7 +12,7 @@ def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) 
 	logging.info(f':: Starting Process')
 	manager = BotConfigurationManager()
 
-	configs = filter(lambda x: x is not None, [filter_configuration(config) for config in manager.get_configuration()])
+	configs = list(filter(filter_configuration, manager.get_configuration()))
 
 	messages = []
 

@@ -4,16 +4,18 @@ import logging
 
 from praw import Reddit
 from praw.models.reddit.base import RedditBase
+
+from shared_code.models.bot_configuration import BotConfigurationManager
 from shared_code.models.table_data import TableRecord
 
 
 class RedditHelper:
 	def __init__(self):
 		self.instance: dict[str, Reddit] = dict()
+		self.bot_config_manager: BotConfigurationManager = BotConfigurationManager()
 
-	@staticmethod
-	def get_subs_from_configuration() -> str:
-		subs = "+".join(os.environ["SubReddit"].split(","))
+	def get_subs_from_configuration(self, bot_name: str) -> str:
+		subs = "+".join(self.bot_config_manager.get_configuration_by_name(bot_name).SubReddits)
 		return subs
 
 	def get_praw_instance(self, bot_name: str) -> Reddit:

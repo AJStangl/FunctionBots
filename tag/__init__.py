@@ -3,7 +3,7 @@ import logging
 import datetime
 from typing import Optional
 import azure.functions as func
-
+import random
 from shared_code.helpers.reddit_helper import RedditHelper
 from shared_code.models.table_data import TableRecord
 from shared_code.helpers.tagging import Tagging
@@ -14,7 +14,13 @@ def main(message: func.QueueMessage, promptMessage: func.Out[str]) -> None:
 
 	message_json = message.get_body().decode('utf-8')
 
-	incoming_message = json.loads(message_json, object_hook=lambda d: TableRecord(**d))
+	incoming_message: TableRecord = json.loads(message_json, object_hook=lambda d: TableRecord(**d))
+
+	# TODO - Function to reduce probability of reply (and calling for API data)
+	probability = random.randint(1, 10)
+	if probability != 1:
+		logging.info(f":: Required:1\tProvided: {probability}")
+		return
 
 	incoming_message.text_generation_prompt = process_input(incoming_message)
 

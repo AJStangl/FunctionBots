@@ -36,18 +36,25 @@ def main(message: func.QueueMessage, msg: func.Out[typing.List[str]]) -> None:
 
 	logging.info(f":: Polling For Submissions for User: {user.name}")
 
-	subs = helper.get_subs_from_configuration()
+	subs = helper.get_subs_from_configuration(bot_name)
 
-	logging.info(f":: Obtaining New/Incoming Streams For Subreddit: {subs}")
+	logging.info(f":: Obtaining New/Incoming Streams For Subreddit: {subs} - {bot_name}")
 
 	subreddit = reddit.subreddit(subs)
 
-	logging.info(f":: Subreddit {subreddit} connected. Obtaining Stream...")
+	logging.info(f":: Subreddit {subreddit} connected. Obtaining Stream for {bot_name}")
 
 	messages = []
 
-	logging.info(f":: Processing Stream For submissions")
+	logging.info(f":: Processing Stream For submissions {bot_name}")
 	submissions = subreddit.stream.submissions(pause_after=0, skip_existing=False)
+	user_subs = user.submissions.new(limit=20)
+	for submission in user_subs:
+		if submission is None:
+			break
+		m = process_thing(submission, user, "Submission", proxy, helper)
+		if m is not None:
+			messages.append(m)
 	for submission in submissions:
 		if submission is None:
 			break
@@ -55,9 +62,15 @@ def main(message: func.QueueMessage, msg: func.Out[typing.List[str]]) -> None:
 		if m is not None:
 			messages.append(m)
 
-	logging.info(f":: Processing Stream For comments")
+	logging.info(f":: Processing Stream For comments for {bot_name}")
 	comments = subreddit.stream.comments(pause_after=0, skip_existing=False)
-
+	user_comments = user.comments.new(limit=100)
+	for comment in user_comments:
+		if comment is None:
+			break
+		m = process_thing(comment, user, "Comment", proxy, helper)
+		if m is not None:
+			messages.append(m)
 	for comment in comments:
 		if comment is None:
 			break
@@ -67,11 +80,11 @@ def main(message: func.QueueMessage, msg: func.Out[typing.List[str]]) -> None:
 
 	if len(messages) > 0:
 		msg.set(messages)
-		logging.info(":: Sent Message Batch Successfully")
+		logging.info(f":: Sent Message Batch Successfully from {bot_name}")
 		return
 
 	msg.set([])
-	logging.info(f":: Process Complete, no new inputs from stream")
+	logging.info(f":: Process Complete, no new inputs from stream {bot_name}")
 	return
 
 
@@ -86,13 +99,11 @@ def process_thing(thing: RedditBase, user: Redditor, input_type: str, proxy: Tab
 	if proxy.entity_exists(mapped_input):
 		return None
 
+	# Filter new posts
+	# if not ensure_time_to_respond(2, mapped_input.content_date_submitted_utc):
+	# 	return None
 
-	if not ensure_time_to_respond(2, mapped_input.content_date_submitted_utc):
-	 	return None
-
-	return None
-	# return mapped_input.json
-
+	return mapped_input.json
 
 def get_current_stamp() -> int:
 	dt = datetime.datetime.now(timezone.utc)
@@ -104,6 +115,5 @@ def get_current_stamp() -> int:
 
 def ensure_time_to_respond(hour_delay: int, timestamp: int) -> bool:
 	hours_since_post = (get_current_stamp() - timestamp) / 60 / 60
-	logging.info(f":: Hour Delay {hour_delay} Time Since: {hours_since_post}")
+	logging.debug(f":: Hour Delay {hour_delay} Time Since: {hours_since_post}")
 	return hour_delay > hours_since_post
-
