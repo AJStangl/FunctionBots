@@ -24,7 +24,6 @@ _end_tag = '<|'
 
 def main(submissionTimer: func.TimerRequest) -> None:
 	logging.info(f":: Submission Trigger Called at {time.time()}")
-	return
 	manager = BotConfigurationManager()
 	generator = ModelTextGenerator()
 	reddit_helper = RedditHelper()

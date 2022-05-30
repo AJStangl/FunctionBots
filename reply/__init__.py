@@ -65,7 +65,7 @@ def extract_reply_from_generated_text(prompt, generated_text) -> Optional[str]:
 		index_of_truncate = generated_text.find("!!!!")
 
 	if index_of_truncate == -1:
-		logging.info("Truncate string not found")
+		logging.debug(":: String Is EmptyTruncate string not found")
 		return None
 
 	# extract the text from between the prompt and the truncate point
