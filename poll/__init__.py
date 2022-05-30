@@ -46,10 +46,12 @@ def main(message: func.QueueMessage, msg: func.Out[typing.List[str]]) -> None:
 	messages = []
 
 	logging.debug(f":: Processing Stream For submissions {bot_name}")
-	submissions = subreddit.stream.submissions(pause_after=0, skip_existing=False)
+	# submissions = subreddit.stream.submissions(pause_after=0, skip_existing=False)
+	submissions = subreddit.new()
 	user_subs = user.submissions.new(limit=20)
 
 	for submission in user_subs:
+		submission
 		if submission is None:
 			break
 		m = process_thing(submission, user, "Submission", proxy, helper)
@@ -63,7 +65,8 @@ def main(message: func.QueueMessage, msg: func.Out[typing.List[str]]) -> None:
 			messages.append(m)
 
 	logging.info(f":: Processing Stream For comments for {bot_name}")
-	comments = subreddit.stream.comments(pause_after=0, skip_existing=False)
+	# comments = subreddit.stream.comments(pause_after=0, skip_existing=False)
+	comments = subreddit.comments()
 	user_comments = user.comments.new(limit=100)
 
 	for comment in user_comments:

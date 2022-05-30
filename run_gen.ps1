@@ -1,13 +1,12 @@
-function RunBot {
+function RunBot
+{
     conda activate reddit-function-bot
     func start --functions gen --port 7073
 }
 
-RunBot
+$a = 1
+$b = 1
 
-if (!$LastExitCode) {
-        RunBot
-}
-else{
-    RunBot
-}
+Do {
+  RunBot
+} while($a == $b)

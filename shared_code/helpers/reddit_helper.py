@@ -23,10 +23,10 @@ class RedditHelper:
 		cached_instance = self.instance.get(bot_name)
 
 		if cached_instance:
-			logging.info(f":: Using Cached PRAW Instance for {bot_name}")
+			logging.debug(f":: Using Cached PRAW Instance for {bot_name}")
 			return cached_instance
 
-		logging.info(f":: Initializing Reddit Praw Instance for {bot_name}")
+		logging.debug(f":: Initializing Reddit Praw Instance for {bot_name}")
 		reddit = Reddit(site_name=bot_name)
 		self.instance[bot_name] = reddit
 
