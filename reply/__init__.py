@@ -13,7 +13,7 @@ from shared_code.helpers.reddit_helper import RedditHelper
 
 def main(message: func.QueueMessage) -> None:
 
-	logging.info(f":: Trigger For Reply Handler Generation called at {datetime.date.today()}")
+	logging.debug(f":: Trigger For Reply Handler Generation called at {datetime.date.today()}")
 
 	service = TableServiceProxy().service
 	client = service.get_table_client("tracking")
@@ -29,25 +29,27 @@ def main(message: func.QueueMessage) -> None:
 
 	response = incoming_message.text_generation_response
 
-	foo = extract_reply_from_generated_text(prompt, response)
-
-	if incoming_message.input_type == "Comment":
-		logging.info(f":: Replying to Comment From {incoming_message.author} in {incoming_message.subreddit}")
-		comment_instance = instance.comment(id=incoming_message.id)
-		comment_instance.reply(foo)
-
-	else:
-		logging.info(f":: Replying to Submission From {incoming_message.author} in {incoming_message.subreddit}")
-		submission_instance = instance.submission(id=incoming_message.id)
-		foo = extract_reply_from_generated_text(incoming_message.text_generation_prompt, incoming_message.text_generation_response)
-		submission_instance.reply(foo)
+	reply = extract_reply_from_generated_text(prompt, response)
 
 	entity = client.get_entity(incoming_message.PartitionKey, incoming_message.RowKey)
 
+	if reply is None:
+		entity["has_responded"] = False
+		client.update_entity(entity)
+		return None
+
+	if incoming_message.input_type == "Comment":
+		logging.debug(f":: Replying to Comment From {incoming_message.author} in {incoming_message.subreddit}")
+		comment_instance = instance.comment(id=incoming_message.id)
+		comment_instance.reply(reply)
+
+	else:
+		logging.debug(f":: Replying to Submission From {incoming_message.author} in {incoming_message.subreddit}")
+		submission_instance = instance.submission(id=incoming_message.id)
+		submission_instance.reply(reply)
+
 	entity["has_responded"] = True
-
 	client.update_entity(entity)
-
 	return None
 
 

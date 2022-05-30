@@ -2,11 +2,12 @@
   "scriptFile": "__init__.py",
   "bindings": [
     {
-      "name": "message",
-      "type": "queueTrigger",
+      "name": "genTimer",
+      "type": "timerTrigger",
       "direction": "in",
-      "queueName": "prompt-queue",
-      "connection": "AzureWebJobsStorage"
+      "schedule": "0/5 * * * * *",
+      "useMonitor": true,
+      "runOnStartup": true
     },
     {
       "type": "queue",

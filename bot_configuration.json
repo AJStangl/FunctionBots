@@ -35,8 +35,8 @@
     ]
   },
   {
-    "Name": "Pablobot-GPT2",
-    "Model": "",
+    "Name": "PabloBot-GPT2",
+    "Model": "D:\\models\\large_pablo_bot",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]
@@ -50,7 +50,7 @@
   },
   {
     "Name": "SusanBot-GPT2",
-    "Model": "",
+    "Model": "D:\\models\\large_flightattentdent_bot",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]

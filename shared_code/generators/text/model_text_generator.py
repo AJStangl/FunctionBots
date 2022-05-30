@@ -19,17 +19,31 @@ class ModelTextGenerator(object):
 	def generate_text(self, bot_username, prompt) -> str:
 		start_time = time.time()
 		config = BotConfigurationManager().get_configuration_by_name(bot_username)
+
 		try:
-			model = LanguageGenerationModel("gpt2", config.Model, use_cuda=True, cuda_device=-1)
-			output_list = model.generate(prompt=prompt, args=self.default_text_generation_parameters)
-		except Exception:
-			model = LanguageGenerationModel("gpt2", config.Model, use_cuda=False)
+			model = LanguageGenerationModel("gpt2", config.Model, use_cuda=True)
 			output_list = model.generate(prompt=prompt, args=self.default_text_generation_parameters)
 
-		end_time = time.time()
-		duration = round(end_time - start_time, 1)
+			end_time = time.time()
+			duration = round(end_time - start_time, 1)
 
-		logging.info(f'{len(output_list)} sample(s) of text generated in {duration} seconds.')
+			logging.info(f'{len(output_list)} sample(s) of text generated in {duration} seconds.')
 
-		if output_list:
-			return output_list[0]
+			if output_list:
+				return output_list[0]
+
+		except Exception as e:
+			logging.error(f"{e} - Killing CUDA")
+			self._kill_bad_cuda()
+
+	@staticmethod
+	def _kill_bad_cuda():
+		import torch
+		import re
+		import os
+		processes = torch.cuda.list_gpu_processes()
+		matched_process = re.findall("\s+(\d+)\s\D+", processes)
+		if len(matched_process) != 0:
+			kill_process = matched_process[0]
+			logging.info(f":: Killing CUDA Task with PID: {kill_process}")
+			os.system(f"taskkill /F /PID {kill_process}")

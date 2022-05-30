@@ -1,11 +1,11 @@
+import datetime
 import json
-
-from azure.core.credentials import AzureNamedKeyCredential
-from azure.data.tables import TableServiceClient, TableClient
 import logging
 
-from shared_code.models.table_data import TableRecord
+from azure.data.tables import TableServiceClient, TableClient
+
 from shared_code.models.azure_configuration import FunctionAppConfiguration
+from shared_code.models.table_data import TableRecord
 
 
 class TableServiceProxy(object):
@@ -34,5 +34,19 @@ class TableServiceProxy(object):
 			client.create_entity(entity=json.loads(raw))
 			return False
 
+	def ensure_created(self, table_name) -> None:
+		logging.info(f":: Creating Table {table_name}")
+		self.service.create_table_if_not_exists("tracking")
+		return None
 
+	def clear_table(self) -> None:
+		client = self.get_client()
 
+		query_filter = f"Timestamp lt datetime'{datetime.datetime.now().isoformat()}'"
+
+		entities = client.query_entities(query_filter=query_filter)
+
+		for entity in entities:
+			client.delete_entity(entity)
+
+		return None

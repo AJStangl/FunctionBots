@@ -6,9 +6,11 @@
   },
   "extensions": {
     "queues": {
-      "batchSize": 8,
-      "newBatchThreshold": 4
+      "batchSize": 8
     },
-    "tables": {}
+    "tables": {},
+    "http": {
+      "routePrefix": "api"
+    }
   }
 }

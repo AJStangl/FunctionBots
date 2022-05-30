@@ -6,9 +6,8 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
-      "methods": [
-        "get"
-      ]
+      "methods": ["get"],
+      "route": "{action}/{resource}/{name}"
     },
     {
       "type": "http",

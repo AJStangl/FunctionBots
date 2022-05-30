@@ -5,6 +5,17 @@ import re
 
 
 class Tagging:
+	_link_submission_start_tag = '<|sols|>'
+	_selftext_submission_start_tag = '<|soss|>'
+
+	_title_start_tag = '<|sot|>'
+	_selftext_start_tag = '<|sost|>'
+
+	_reply_start_tag = '<|sor|>'
+	_reply_end_tag = '<|eor|>'
+
+	_end_tag = '<|'
+
 	@staticmethod
 	def tag_comment(comment: Comment) -> str:
 		try:

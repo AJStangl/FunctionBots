@@ -10,16 +10,20 @@ from shared_code.helpers.tagging import Tagging
 
 def main(message: func.QueueMessage, promptMessage: func.Out[str]) -> None:
 
-	logging.info(f":: Trigger For Text Prompt Extraction called at {datetime.date.today()}")
+	logging.debug(f":: Trigger For Text Prompt Extraction called at {datetime.date.today()}")
 
 	message_json = message.get_body().decode('utf-8')
 
 	incoming_message: TableRecord = json.loads(message_json, object_hook=lambda d: TableRecord(**d))
 
-	# TODO - Function to reduce probability of reply (and calling for API data)
-	probability = random.randint(1, 10)
+	probability = random.randint(1, 3)
+
+	# always let the bot reply to a submission
+	if incoming_message.input_type == "Submission":
+		probability = 1
+
 	if probability != 1:
-		logging.info(f":: Required:1\tProvided: {probability}")
+		logging.debug(f":: Filtering Reply To Comment")
 		return
 
 	incoming_message.text_generation_prompt = process_input(incoming_message)

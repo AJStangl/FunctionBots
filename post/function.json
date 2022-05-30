@@ -1,0 +1,12 @@
+{
+  "scriptFile": "__init__.py",
+  "bindings": [
+    {
+      "name": "submissionTimer",
+      "type": "timerTrigger",
+      "direction": "in",
+      "schedule": "0 0 */12 * * *",
+      "useMonitor": true
+    }
+  ]
+}

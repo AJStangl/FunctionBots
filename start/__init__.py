@@ -9,7 +9,8 @@ from shared_code.models.bot_configuration import BotConfigurationManager, BotCon
 
 
 def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> None:
-	logging.info(f':: Starting Process')
+	logging.info(f':: Starting Main Process')
+
 	manager = BotConfigurationManager()
 
 	configs = list(filter(filter_configuration, manager.get_configuration()))
