@@ -16,6 +16,7 @@ class TableRecord:
 	text_generation_prompt: str
 	text_generation_response: str
 	has_responded: bool
+	has_tried: bool
 
 	@property
 	def __dict__(self):

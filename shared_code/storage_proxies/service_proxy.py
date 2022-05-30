@@ -1,6 +1,7 @@
 import logging
 
-from azure.storage.queue import QueueMessage, QueueServiceClient
+from azure.storage.queue import QueueMessage, QueueServiceClient, TextBase64EncodePolicy, TextBase64DecodePolicy, \
+	QueueClient
 import azure.storage.queue
 
 from shared_code.models.azure_configuration import FunctionAppConfiguration
@@ -62,3 +63,6 @@ class QueueServiceProxy(object):
 
 		self.service.create_queue(queue_name)
 		return
+
+	def create_service_client(self, queue_name) -> QueueClient:
+		return QueueClient.from_connection_string(self.connection_string, queue_name)

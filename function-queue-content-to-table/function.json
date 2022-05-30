@@ -7,13 +7,6 @@
       "direction": "in",
       "queueName": "content-queue",
       "connection": "AzureWebJobsStorage"
-    },
-    {
-      "type": "queue",
-      "direction": "out",
-      "name": "promptMessage",
-      "queueName": "prompt-queue",
-      "connection": "AzureWebJobsStorage"
     }
   ]
 }

@@ -9,7 +9,8 @@ from shared_code.models.bot_configuration import BotConfigurationManager, BotCon
 
 
 def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> None:
-	logging.info(f':: Starting Main Process')
+
+	logging.debug(f':: Starting Main Process')
 
 	manager = BotConfigurationManager()
 
@@ -35,13 +36,13 @@ def filter_configuration(config: BotConfiguration) -> Optional[BotConfiguration]
 		return None
 
 	if not os.path.exists(config.Model):
-		logging.info(f":: {config.Name} does not have a valid model path. Skipping...")
+		logging.debug(f":: {config.Name} does not have a valid model path. Skipping...")
 		return None
 
 	if len(config.SubReddits) == 0:
-		logging.info(f":: {config.Name} is not configured to run. Skipping...")
+		logging.debug(f":: {config.Name} is not configured to run. Skipping...")
 		return None
 
-	logging.info(f":: {config.Name} sent for processing")
+	logging.debug(f":: {config.Name} sent for processing")
 
 	return config

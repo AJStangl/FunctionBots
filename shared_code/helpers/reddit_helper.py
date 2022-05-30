@@ -46,6 +46,7 @@ class RedditHelper:
 			responding_bot=bot_username,
 			text_generation_prompt="",
 			text_generation_response="",
-			has_responded=False
+			has_responded=False,
+			has_tried=False
 		)
 		return message

@@ -1,0 +1,13 @@
+{
+  "scriptFile": "__init__.py",
+  "bindings": [
+    {
+      "name": "replyTimer",
+      "type": "timerTrigger",
+      "direction": "in",
+      "schedule": "*/1 * * * * *",
+      "useMonitor": true,
+      "runOnStartUp": true
+    }
+  ]
+}

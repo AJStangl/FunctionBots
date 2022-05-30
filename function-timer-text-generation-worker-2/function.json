@@ -2,16 +2,18 @@
   "scriptFile": "__init__.py",
   "bindings": [
     {
-      "name": "initializingTimer",
+      "name": "genTimer",
       "type": "timerTrigger",
       "direction": "in",
-      "schedule": "0 */5 * * * *"
+      "schedule": "*/1 * * * * *",
+      "useMonitor": true,
+      "runOnStartup": true
     },
     {
       "type": "queue",
       "direction": "out",
-      "name": "msg",
-      "queueName": "poll-queue",
+      "name": "responseMessage",
+      "queueName": "reply-queue",
       "connection": "AzureWebJobsStorage"
     }
   ]

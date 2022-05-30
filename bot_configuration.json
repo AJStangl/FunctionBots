@@ -1,7 +1,7 @@
 [
   {
     "Name": "ChadNoctorBot-GPT2",
-    "Model": "",
+    "Model": "D:\\models\\large_noctor_bot_2\\",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]
