@@ -53,7 +53,7 @@ def main(tableTimer: func.TimerRequest) -> None:
 	for pages in pending_comments.by_page():
 		for page in pages:
 			record: TableRecord = json.loads(json.dumps(page), object_hook=lambda d: TableRecord(**d))
-			foo = random.randint(1, 3)
+			foo = random.randint(1, 5)
 			if foo == 1:
 				comment_results.append(record)
 				e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
