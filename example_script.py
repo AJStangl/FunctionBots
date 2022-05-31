@@ -186,5 +186,13 @@ def do_thing():
 	foo: TableRecord = handle_incoming_message(message)
 	bar = (foo.content_date_submitted_utc / 60) / 60
 
+def foo():
+	proxy = QueueServiceProxy()
+	service = proxy.service
+	queue_client = service.get_queue_client("prompt-queue")
+	peek = queue_client.peek_messages()
+
+
+
 if __name__ == '__main__':
-	do_thing()
+	foo()

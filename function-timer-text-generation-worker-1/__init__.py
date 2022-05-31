@@ -19,7 +19,7 @@ def main(genTimer: func.TimerRequest, responseMessage: func.Out[str]) -> None:
 	queue_service: QueueServiceClient = QueueServiceProxy().service
 	table_service: TableServiceClient = TableServiceProxy().service
 
-	queue_client: QueueClient = queue_service.get_queue_client("prompt-queue")
+	queue_client: QueueClient = queue_service.get_queue_client("worker-1")
 	table_client: TableClient = table_service.get_table_client("tracking")
 
 	if len(queue_client.peek_messages()) == 0:
@@ -27,10 +27,6 @@ def main(genTimer: func.TimerRequest, responseMessage: func.Out[str]) -> None:
 		return
 
 	message = queue_client.receive_message()
-
-	queue_client.delete_message(message)
-
-	queue_client.close()
 
 	incoming_message: TableRecord = handle_incoming_message(message)
 
@@ -51,6 +47,10 @@ def main(genTimer: func.TimerRequest, responseMessage: func.Out[str]) -> None:
 	entity["text_generation_response"] = result
 
 	table_client.update_entity(entity)
+
+	queue_client.delete_message(message)
+
+	queue_client.close()
 
 	responseMessage.set(json.dumps(entity))
 

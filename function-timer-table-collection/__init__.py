@@ -2,7 +2,7 @@ import json
 import logging
 import random
 from typing import Optional
-
+import random
 import azure.functions as func
 from azure.core.paging import ItemPaged
 from azure.data.tables import TableClient, TableEntity
@@ -23,7 +23,8 @@ def main(tableTimer: func.TimerRequest) -> None:
 
 	client: TableClient = proxy.get_client()
 
-	queue = queue_proxy.service.get_queue_client("prompt-queue")
+	workers = ["worker-1", "worker-2", "worker-3"] #, "worker-4", "worker-5", "worker-6"
+
 
 	query_string = "has_tried eq false and has_responded eq false and input_type eq 'Submission' and text_generation_prompt eq ''"
 
@@ -35,6 +36,7 @@ def main(tableTimer: func.TimerRequest) -> None:
 			record: TableRecord = json.loads(json.dumps(page), object_hook=lambda d: TableRecord(**d))
 			e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
 			e["has_tried"] = True
+			queue = queue_proxy.service.get_queue_client(random.choice(workers))
 			client.update_entity(e)
 			submission_results.append(record)
 		break
@@ -44,6 +46,7 @@ def main(tableTimer: func.TimerRequest) -> None:
 	for record in submission_results:
 		processed = process_input(helper, record)
 		record.text_generation_prompt = processed
+		queue = queue_proxy.service.get_queue_client(random.choice(workers))
 		queue.send_message(record.json)
 
 	comment_results = []
@@ -72,6 +75,7 @@ def main(tableTimer: func.TimerRequest) -> None:
 	for record in comment_results:
 		processed = process_input(helper, record)
 		record.text_generation_prompt = processed
+		queue = queue_proxy.service.get_queue_client(random.choice(workers))
 		queue.send_message(record.json)
 
 

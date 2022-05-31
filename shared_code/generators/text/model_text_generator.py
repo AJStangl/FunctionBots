@@ -7,7 +7,7 @@ from shared_code.models.bot_configuration import BotConfigurationManager, BotCon
 class ModelTextGenerator(object):
 	def __init__(self):
 		self.default_text_generation_parameters = {
-			'max_length': 512,
+			'max_length': 1024,
 			'num_return_sequences': 1,
 			'prompt': None,
 			'temperature': 0.8,
