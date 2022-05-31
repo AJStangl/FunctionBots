@@ -9,7 +9,7 @@ from azure.storage.queue import QueueServiceClient, QueueClient, QueueMessage
 from praw import Reddit
 from praw.models import Submission, Comment
 
-from shared_code.helpers.reddit_helper import RedditHelper
+from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.helpers.tagging import TaggingMixin
 from shared_code.models.table_data import TableRecord
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
@@ -20,7 +20,7 @@ def main(replyTimer: func.TimerRequest) -> None:
 	tagging: TaggingMixin = TaggingMixin()
 	queue_service: QueueServiceClient = QueueServiceProxy().service
 	table_service: TableServiceClient = TableServiceProxy().service
-	helper: RedditHelper = RedditHelper()
+	helper: RedditManager = RedditManager()
 
 	queue_client: QueueClient = queue_service.get_queue_client("reply-queue")
 
@@ -44,7 +44,7 @@ def main(replyTimer: func.TimerRequest) -> None:
 
 	extract: dict = tagging.extract_reply_from_generated_text(prompt, response)
 
-	reddit: Reddit = helper.get_praw_instance(bot_name=record.responding_bot)
+	reddit: Reddit = helper.get_praw_instance_for_bot(bot_name=record.responding_bot)
 
 	entity: TableEntity = table_client.get_entity(record.PartitionKey, record.RowKey)
 

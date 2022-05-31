@@ -8,7 +8,7 @@ from azure.core.paging import ItemPaged
 from azure.data.tables import TableClient, TableEntity
 from praw.models import Submission
 
-from shared_code.helpers.reddit_helper import RedditHelper
+from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.helpers.tagging import TaggingMixin
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 from shared_code.storage_proxies.table_proxy import TableServiceProxy, TableRecord
@@ -19,12 +19,11 @@ def main(tableTimer: func.TimerRequest) -> None:
 
 	queue_proxy: QueueServiceProxy = QueueServiceProxy()
 
-	helper: RedditHelper = RedditHelper()
+	helper: RedditManager = RedditManager()
 
 	client: TableClient = proxy.get_client()
 
-	workers = ["worker-1", "worker-2", "worker-3"] #, "worker-4", "worker-5", "worker-6"
-
+	workers = ["worker-1", "worker-2", "worker-3"]
 
 	query_string = "has_tried eq false and has_responded eq false and input_type eq 'Submission' and text_generation_prompt eq ''"
 
@@ -36,12 +35,11 @@ def main(tableTimer: func.TimerRequest) -> None:
 			record: TableRecord = json.loads(json.dumps(page), object_hook=lambda d: TableRecord(**d))
 			e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
 			e["has_tried"] = True
-			queue = queue_proxy.service.get_queue_client(random.choice(workers))
 			client.update_entity(e)
 			submission_results.append(record)
 		break
 
-	submission_results.reverse()
+	submission_results
 
 	for record in submission_results:
 		processed = process_input(helper, record)
@@ -70,7 +68,7 @@ def main(tableTimer: func.TimerRequest) -> None:
 				client.update_entity(e)
 		break
 
-	comment_results.reverse()
+	comment_results
 
 	for record in comment_results:
 		processed = process_input(helper, record)
@@ -79,9 +77,9 @@ def main(tableTimer: func.TimerRequest) -> None:
 		queue.send_message(record.json)
 
 
-def process_input(helper: RedditHelper, incoming_message: TableRecord) -> Optional[str]:
+def process_input(helper: RedditManager, incoming_message: TableRecord) -> Optional[str]:
 	tagging_mixin = TaggingMixin()
-	instance = helper.get_praw_instance(incoming_message.responding_bot)
+	instance = helper.get_praw_instance_for_bot(incoming_message.responding_bot)
 
 	if incoming_message.input_type == "Submission":
 		thing: Submission = instance.submission(id=incoming_message.id)

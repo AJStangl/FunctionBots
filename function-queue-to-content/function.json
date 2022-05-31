@@ -7,13 +7,6 @@
       "direction": "in",
       "queueName": "poll-queue",
       "connection": "AzureWebJobsStorage"
-    },
-    {
-      "type": "queue",
-      "direction": "out",
-      "name": "msg",
-      "queueName": "content-queue",
-      "connection": "AzureWebJobsStorage"
     }
   ]
 }

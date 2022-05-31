@@ -3,13 +3,14 @@ import logging
 
 
 from praw import Reddit
+from praw.models import Submission, Comment
 from praw.models.reddit.base import RedditBase
 
 from shared_code.models.bot_configuration import BotConfigurationManager
 from shared_code.models.table_data import TableRecord
 
 
-class RedditHelper:
+class RedditManager:
 	def __init__(self):
 		self.instance: dict[str, Reddit] = dict()
 		self.bot_config_manager: BotConfigurationManager = BotConfigurationManager()
@@ -18,7 +19,7 @@ class RedditHelper:
 		subs = "+".join(self.bot_config_manager.get_configuration_by_name(bot_name).SubReddits)
 		return subs
 
-	def get_praw_instance(self, bot_name: str) -> Reddit:
+	def get_praw_instance_for_bot(self, bot_name: str) -> Reddit:
 
 		cached_instance = self.instance.get(bot_name)
 
@@ -31,6 +32,11 @@ class RedditHelper:
 		self.instance[bot_name] = reddit
 
 		return reddit
+
+	@staticmethod
+	def get_all_comments_from_submission(submission: Submission) -> [Comment]:
+		submission.comments.replace_more()
+		return [comment for comment in submission.comments.list()]
 
 	@staticmethod
 	def map_base_to_message(thing: RedditBase, bot_username: str, input_type: str) -> TableRecord:

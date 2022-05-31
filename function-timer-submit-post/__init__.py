@@ -8,7 +8,7 @@ import codecs
 import ftfy
 
 from shared_code.generators.text.model_text_generator import ModelTextGenerator
-from shared_code.helpers.reddit_helper import RedditHelper
+from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.models.bot_configuration import BotConfigurationManager, BotConfiguration
 
 _link_submission_start_tag = '<|sols|>'
@@ -26,7 +26,7 @@ def main(submissionTimer: func.TimerRequest) -> None:
 	logging.info(f":: Submission Trigger Called at {time.time()}")
 	manager = BotConfigurationManager()
 	generator = ModelTextGenerator()
-	reddit_helper = RedditHelper()
+	reddit_helper = RedditManager()
 
 	configs = list(filter(manager.filter_configuration, manager.get_configuration()))
 
@@ -43,7 +43,7 @@ def main(submissionTimer: func.TimerRequest) -> None:
 			continue
 
 		#TODO: Handle Image Posts -- We don't do that now
-		instance = reddit_helper.get_praw_instance(bot.Name)
+		instance = reddit_helper.get_praw_instance_for_bot(bot.Name)
 		logging.debug(f":: Submitting Post to {target_sub} for {bot.Name}")
 		try:
 			logging.debug(f":: The prompt is{extracted_prompt}")

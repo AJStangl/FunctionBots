@@ -11,7 +11,7 @@ from praw import Reddit
 from praw.models import Submission, Comment
 
 from shared_code.generators.text.model_text_generator import ModelTextGenerator
-from shared_code.helpers.reddit_helper import RedditHelper
+from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.helpers.tagging import TaggingMixin
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 from shared_code.storage_proxies.table_proxy import TableServiceProxy, TableRecord
@@ -22,7 +22,7 @@ def run_submission_collection():
 
 	queue_proxy: QueueServiceProxy = QueueServiceProxy()
 
-	helper: RedditHelper = RedditHelper()
+	helper: RedditManager = RedditManager()
 
 	client: TableClient = proxy.get_client()
 
@@ -66,9 +66,9 @@ def run_submission_collection():
 		queue.send_message(record.json)
 
 
-def process_input(helper: RedditHelper, incoming_message: TableRecord) -> Optional[str]:
+def process_input(helper: RedditManager, incoming_message: TableRecord) -> Optional[str]:
 	tagging_mixin = TaggingMixin()
-	instance = helper.get_praw_instance(incoming_message.responding_bot)
+	instance = helper.get_praw_instance_for_bot(incoming_message.responding_bot)
 
 	if incoming_message.input_type == "Submission":
 		thing: Submission = instance.submission(id=incoming_message.id)
@@ -91,7 +91,7 @@ def run_reply() -> None:
 	tagging: TaggingMixin = TaggingMixin()
 	queue_service: QueueServiceClient = QueueServiceProxy().service
 	table_service: TableServiceClient = TableServiceProxy().service
-	helper: RedditHelper = RedditHelper()
+	helper: RedditManager = RedditManager()
 
 	queue_client: QueueClient = queue_service.get_queue_client("reply-queue")
 
@@ -112,7 +112,7 @@ def run_reply() -> None:
 
 	extract: dict = tagging.extract_reply_from_generated_text(prompt, response)
 
-	reddit: Reddit = helper.get_praw_instance(bot_name=record.responding_bot)
+	reddit: Reddit = helper.get_praw_instance_for_bot(bot_name=record.responding_bot)
 
 	entity: TableEntity = table_client.get_entity(record.PartitionKey, record.RowKey)
 

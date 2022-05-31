@@ -1,9 +1,11 @@
 import datetime
 import json
 import logging
+from typing import Optional
 
+from azure.core.exceptions import HttpResponseError
 from azure.data.tables import TableServiceClient, TableClient
-
+from azure.data.tables import TableEntity
 from shared_code.models.azure_configuration import FunctionAppConfiguration
 from shared_code.models.table_data import TableRecord
 
@@ -33,6 +35,17 @@ class TableServiceProxy(object):
 		except Exception:
 			client.create_entity(entity=json.loads(raw))
 			return False
+
+	def create_update_entity(self, entity: TableRecord) -> Optional[TableEntity]:
+		client = self.get_client()
+		try:
+			return client.get_entity(partition_key=entity.PartitionKey, row_key=entity.RowKey)
+		except HttpResponseError:
+			logging.info(f":: Creating new record for {entity.PartitionKey} - {entity.RowKey}")
+			client.create_entity(entity=json.loads(entity.json))
+			return client.get_entity(partition_key=entity.PartitionKey, row_key=entity.RowKey)
+		finally:
+			client.close()
 
 	def ensure_created(self, table_name) -> None:
 		logging.info(f":: Creating Table {table_name}")
