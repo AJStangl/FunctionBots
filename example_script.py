@@ -8,7 +8,8 @@ from azure.core.paging import ItemPaged
 from azure.data.tables import TableClient, TableEntity, TableServiceClient
 from azure.storage.queue import QueueServiceClient, QueueClient, QueueMessage
 from praw import Reddit
-from praw.models import Submission, Comment
+from praw.models import Submission, Comment, Subreddit
+from praw.models.reddit.redditor import RedditorStream
 
 from shared_code.generators.text.model_text_generator import ModelTextGenerator
 from shared_code.helpers.reddit_helper import RedditManager
@@ -192,7 +193,20 @@ def foo():
 	queue_client = service.get_queue_client("prompt-queue")
 	peek = queue_client.peek_messages()
 
+def get_sub_and_comment_forest():
+	reddit = RedditManager.get_praw_instance_for_bot(bot_name="CoopBot-GPT2")
+
+	sub: Subreddit = reddit.subreddits("CoopAndPabloPlayHouse")
+	stream = sub.stream.submissions(pause_after=0)
+
+	for submission in stream:
+		submission.comments.replace_more(limit=None)
+		for comment in submission.comments.list():
+			print(comment.body)
+
+
+
 
 
 if __name__ == '__main__':
-	foo()
+	get_sub_and_comment_forest()
