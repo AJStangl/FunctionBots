@@ -2,6 +2,7 @@ import base64
 import datetime
 import json
 import logging
+from operator import attrgetter
 from typing import Optional
 
 from azure.core.paging import ItemPaged
@@ -9,6 +10,7 @@ from azure.data.tables import TableClient, TableEntity, TableServiceClient
 from azure.storage.queue import QueueServiceClient, QueueClient, QueueMessage
 from praw import Reddit
 from praw.models import Submission, Comment, Subreddit
+from praw.models.reddit.base import RedditBase
 from praw.models.reddit.redditor import RedditorStream
 
 from shared_code.generators.text.model_text_generator import ModelTextGenerator
@@ -194,18 +196,46 @@ def foo():
 	peek = queue_client.peek_messages()
 
 def get_sub_and_comment_forest():
-	reddit = RedditManager.get_praw_instance_for_bot(bot_name="CoopBot-GPT2")
+	reddit = RedditManager().get_praw_instance_for_bot(bot_name="CoopBot-GPT2")
 
-	sub: Subreddit = reddit.subreddits("CoopAndPabloPlayHouse")
+	sub: Subreddit = reddit.subreddit("CoopAndPabloPlayHouse")
 	stream = sub.stream.submissions(pause_after=0)
 
+	submissions: [Submission] = []
+	comments: [Comment] = []
+
 	for submission in stream:
-		submission.comments.replace_more(limit=None)
-		for comment in submission.comments.list():
-			print(comment.body)
+		if submission is None:
+			break
+		submissions.append(submission)
+
+	mapped_results = []
+	for item in submissions:
+		if filter_by_time(item):
+			continue
+		mapped = RedditManager().map_base_to_message(item, reddit.user.me(), "Submission")
+		mapped_results.insert(0, mapped)
+
+	for elem in mapped_results:
+		print(elem)
 
 
+	# sorted_submissions = sorted(mapped_results, key=attrgetter('content_date_submitted_utc'))
+	#
+	# print(sorted_submissions)
 
+def filter_by_time(thing: RedditBase) -> bool:
+	return 12 < (datetime.datetime.utcnow() - datetime.datetime.fromtimestamp(thing.created_utc)).total_seconds() / 3600
+
+def chain_listing_generators(*iterables):
+	# Special tool for chaining PRAW's listing generators
+	# It joins the three iterables together so that we can DRY
+	for it in iterables:
+		for element in it:
+			if element is None:
+				break
+			else:
+				yield element
 
 
 if __name__ == '__main__':
