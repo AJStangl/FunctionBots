@@ -58,14 +58,12 @@ def main(replyTimer: func.TimerRequest) -> None:
 		sub_instance.reply(extract['body'])
 		entity["has_responded"] = True
 		table_client.update_entity(entity)
-		logging.info(f"{record.responding_bot} - {record.input_type} - {extract['body']}")
 
 	if record.input_type == "Comment":
 		comment_instance: Comment = reddit.comment(id=record.id)
 		comment_instance.reply(extract['body'])
 		entity["has_responded"] = True
 		table_client.update_entity(entity)
-		logging.info(f"{record.responding_bot} - {record.input_type} - {extract['body']}")
 
 	table_client.close()
 

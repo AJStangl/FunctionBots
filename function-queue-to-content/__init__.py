@@ -118,6 +118,8 @@ def handle_comments_from_subs(submission: Submission) -> [Comment]:
 		delta = abs(comment_created_hours - submission_created_hours)
 		if delta <= 2 and submission.num_comments <= 200:
 			continue
+		if comment.submission.locked:
+			continue
 		else:
 			comments.insert(0, comment)
 	return comments
@@ -125,6 +127,7 @@ def handle_comments_from_subs(submission: Submission) -> [Comment]:
 
 def should_respond(utc_timestamp):
 	return (datetime.datetime.utcnow() - datetime.datetime.fromtimestamp(utc_timestamp)).total_seconds() / 3600
+
 
 def timestamp_to_hours(utc_timestamp):
 	return (datetime.datetime.utcnow() - datetime.datetime.fromtimestamp(utc_timestamp)).total_seconds() / 3600
