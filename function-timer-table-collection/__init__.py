@@ -13,6 +13,7 @@ from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.helpers.tagging import TaggingMixin
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 from shared_code.storage_proxies.table_proxy import TableServiceProxy, TableRecord
+from shared_code.models.bot_configuration import BotConfigurationManager, BotConfiguration
 
 
 def main(tableTimer: func.TimerRequest) -> None:
@@ -24,10 +25,14 @@ def main(tableTimer: func.TimerRequest) -> None:
 
 	client: TableClient = proxy.get_client()
 
+	bot_config_manager: BotConfigurationManager = BotConfigurationManager()
+
+	bot_config: BotConfiguration = random.choice(bot_config_manager.configurations)
+
 	submission_workers = ["worker-1"]
 	comment_workers = ["worker-2", "worker-3"]
 
-	query_string = "has_responded eq false and input_type eq 'Submission' and text_generation_prompt eq ''"
+	query_string = f"has_responded eq false and input_type eq 'Submission' and text_generation_prompt eq '' and responding_bot eq '{bot_config.Name}'"
 
 	pending_submissions: ItemPaged[TableEntity] = client.query_entities(query_string, results_per_page=10)
 	submission_results = []
@@ -36,7 +41,6 @@ def main(tableTimer: func.TimerRequest) -> None:
 		for page in pages:
 			record: TableRecord = json.loads(json.dumps(page), object_hook=lambda d: TableRecord(**d))
 			e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
-			e["has_tried"] = True
 			client.update_entity(e)
 			submission_results.append(record)
 		break
@@ -48,33 +52,14 @@ def main(tableTimer: func.TimerRequest) -> None:
 		queue.send_message(record.json)
 
 	comment_results = []
-	query_string = "has_responded eq false and input_type eq 'Comment' and text_generation_prompt eq ''"
+	query_string = f"has_responded eq false and input_type eq 'Comment' and text_generation_prompt eq '' and responding_bot eq '{bot_config.Name}'"
 	pending_comments: ItemPaged[TableEntity] = client.query_entities(query_string, results_per_page=10)
 
 	for pages in pending_comments.by_page():
 		for page in pages:
 			record: TableRecord = json.loads(json.dumps(page), object_hook=lambda d: TableRecord(**d))
-			reddit_instance = helper.get_praw_instance_for_bot(bot_name=record.responding_bot)
-			comment: Comment = reddit_instance.comment(id=record.id)
-			submission: Submission = comment.submission
-			if submission.locked:
-				logging.info(f":: The Submission is locked. Deleting Record")
-				client.delete_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
-				continue
-
-			if submission.num_comments > 200:
-				logging.info(f":: The Submission has too many replies. Deleting Record")
-				client.delete_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
-				continue
-
-			if timestamp_to_hours(submission.created_utc) > 2:
-				logging.info(f":: The Submission is too old. Deleting Record")
-				client.delete_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
-				continue
-
 			comment_results.insert(0, record)
 			e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
-			e["has_tried"] = True
 			client.update_entity(e)
 		break
 

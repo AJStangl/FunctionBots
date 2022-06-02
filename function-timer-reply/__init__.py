@@ -17,6 +17,8 @@ from shared_code.storage_proxies.table_proxy import TableServiceProxy
 
 
 def main(replyTimer: func.TimerRequest) -> None:
+	bad_key_words = ["removed", "nouniqueideas007"]
+
 	tagging: TaggingMixin = TaggingMixin()
 	queue_service: QueueServiceClient = QueueServiceProxy().service
 	table_service: TableServiceClient = TableServiceProxy().service
@@ -52,6 +54,13 @@ def main(replyTimer: func.TimerRequest) -> None:
 		logging.info(":: No Body Present")
 		table_client.close()
 		return
+
+	for item in bad_key_words:
+		if extract['body'] in item:
+			entity["has_responded"] = True
+			table_client.update_entity(entity)
+			table_client.close()
+			return
 
 	if record.input_type == "Submission":
 		sub_instance: Submission = reddit.submission(id=record.id)

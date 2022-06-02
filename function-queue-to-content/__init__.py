@@ -42,11 +42,20 @@ def main(message: func.QueueMessage) -> None:
 
 	unsorted_submissions = []
 	unsorted_comments = []
-	submissions: [Submission] = subreddit.new()
+	# submissions: [Submission] = subreddit.new()
+	submissions = subreddit.stream.submissions(pause_after=0, skip_existing=False)
 	for submission in submissions:
 		if submission is None:
 			break
 		else:
+			if submission.num_comments > 200:
+				logging.info(f":: Submission Has More Than {200} replies, skipping")
+				continue
+
+			if submission.locked:
+				logging.info(f":: The Submission is locked. Skipping")
+				continue
+
 			m = process_thing(submission, user, "Submission", table_proxy, reddit_helper)
 			if m is not None:
 				unsorted_submissions.insert(0, m)
@@ -110,18 +119,24 @@ def process_thing(thing: RedditBase, user: Redditor, input_type: str, proxy: Tab
 def handle_comments_from_subs(submission: Submission) -> [Comment]:
 	comments = []
 	submission_created_hours = timestamp_to_hours(submission.created_utc)
-	if submission_created_hours > 24:
+	if submission_created_hours > 12:
 		return
 	submission.comments.replace_more(limit=None)
+
 	for comment in submission.comments.list():
 		comment_created_hours = timestamp_to_hours(comment.created_utc)
 		delta = abs(comment_created_hours - submission_created_hours)
-		if delta <= 2 and submission.num_comments <= 200:
+		if delta > 2:
+			logging.info(f":: Time between comment and reply is {delta} > 2 hours...Skipping")
 			continue
 		if comment.submission.locked:
 			continue
+		if len(comment.replies.list()) >= 2:
+			logging.info(f":: Comment Has To Many Replies {len(comment.replies.list())}")
+			continue
 		else:
 			comments.insert(0, comment)
+
 	return comments
 
 
