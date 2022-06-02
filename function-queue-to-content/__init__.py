@@ -4,8 +4,9 @@ import typing
 from typing import Optional
 
 import azure.functions as func
+from praw.models import Submission
 from praw.models.reddit.base import RedditBase
-from praw.reddit import Redditor, Reddit
+from praw.reddit import Redditor, Reddit, Comment
 
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.models.table_data import TableRecord
@@ -39,38 +40,52 @@ def main(message: func.QueueMessage) -> None:
 
 	subreddit = reddit.subreddit(subs)
 
-	submissions = subreddit.stream.submissions(pause_after=0, skip_existing=False)
-
 	unsorted_submissions = []
+	unsorted_comments = []
+	submissions: [Submission] = subreddit.new()
 	for submission in submissions:
 		if submission is None:
 			break
-		m = process_thing(submission, user, "Submission", table_proxy, reddit_helper)
-		if m is not None:
-			unsorted_submissions.append(m)
+		else:
+			m = process_thing(submission, user, "Submission", table_proxy, reddit_helper)
+			if m is not None:
+				unsorted_submissions.insert(0, m)
 
-	logging.info(f":: Processing Stream For comments for {bot_name}")
-	comments = subreddit.stream.comments(pause_after=0, skip_existing=False)
+			comments = handle_comments_from_subs(submission)
 
-	unsorted_comments = []
-	for comment in comments:
-		if comment is None:
-			break
-		m = process_thing(comment, user, "Comment", table_proxy, reddit_helper)
-		if m is not None:
-			unsorted_comments.append(m)
-
-	sorted_comments = sorted(unsorted_comments, key=lambda x: x.content_date_submitted_utc)
-	sorted_submissions = sorted(unsorted_submissions, key=lambda x: x.content_date_submitted_utc)
-
-	entries_to_write = sorted_submissions + sorted_comments
-	objects_written = []
-	for item in entries_to_write:
-		entity = table_proxy.create_update_entity(item)
-		objects_written.append(entity)
-
-	logging.debug(f":: Process Complete, no new inputs from stream {len(objects_written)}")
-	return
+			if comments is not None:
+				for comment in comments:
+					m = process_thing(comment, user, "Comment", table_proxy, reddit_helper)
+					if m is not None:
+						unsorted_comments.insert(0, m)
+	# submissions = subreddit.stream.submissions(pause_after=0, skip_existing=False)
+	# unsorted_submissions = []
+	# for submission in submissions:
+	# 	if submission is None:
+	# 		break
+	# 	m = process_thing(submission, user, "Submission", table_proxy, reddit_helper)
+	# 	if m is not None:
+	# 		unsorted_submissions.insert(0, m)
+	#
+	# logging.info(f":: Processing Stream For comments for {bot_name}")
+	# comments = subreddit.stream.comments(pause_after=0, skip_existing=False)
+	#
+	# unsorted_comments = []
+	# for comment in comments:
+	# 	if comment is None:
+	# 		break
+	# 	m = process_thing(comment, user, "Comment", table_proxy, reddit_helper)
+	# 	if m is not None:
+	# 		unsorted_comments.insert(0, m)
+	#
+	# entries_to_write = unsorted_submissions + unsorted_comments
+	# objects_written = []
+	# for item in entries_to_write:
+	# 	entity = table_proxy.create_update_entity(item)
+	# 	objects_written.append(entity)
+	#
+	# logging.debug(f":: Process Complete, no new inputs from stream {len(objects_written)}")
+	# return
 
 
 def process_thing(thing: RedditBase, user: Redditor, input_type: str, proxy: TableServiceProxy, helper: RedditManager) -> Optional[TableRecord]:
@@ -81,7 +96,7 @@ def process_thing(thing: RedditBase, user: Redditor, input_type: str, proxy: Tab
 		return None
 
 	hours_since_response = should_respond(mapped_input.content_date_submitted_utc)
-	if 24 < hours_since_response:
+	if 16 < hours_since_response:
 		logging.info(f":: {mapped_input.input_type} to old {mapped_input.id}")
 		return None
 
@@ -92,5 +107,24 @@ def process_thing(thing: RedditBase, user: Redditor, input_type: str, proxy: Tab
 		return mapped_input
 
 
+def handle_comments_from_subs(submission: Submission) -> [Comment]:
+	comments = []
+	submission_created_hours = timestamp_to_hours(submission.created_utc)
+	if submission_created_hours > 24:
+		return
+	submission.comments.replace_more(limit=None)
+	for comment in submission.comments.list():
+		comment_created_hours = timestamp_to_hours(comment.created_utc)
+		delta = abs(comment_created_hours - submission_created_hours)
+		if delta <= 2 and submission.num_comments <= 200:
+			continue
+		else:
+			comments.insert(0, comment)
+	return comments
+
+
 def should_respond(utc_timestamp):
+	return (datetime.datetime.utcnow() - datetime.datetime.fromtimestamp(utc_timestamp)).total_seconds() / 3600
+
+def timestamp_to_hours(utc_timestamp):
 	return (datetime.datetime.utcnow() - datetime.datetime.fromtimestamp(utc_timestamp)).total_seconds() / 3600

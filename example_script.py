@@ -49,7 +49,7 @@ def run_submission_collection():
 
 	comment_results = []
 	query_string = "has_responded eq false and input_type eq 'Comment' and text_generation_prompt eq ''"
-	pending_comments : ItemPaged[TableEntity] = client.query_entities(query_string, results_per_page=100)
+	pending_comments: ItemPaged[TableEntity] = client.query_entities(query_string, results_per_page=100)
 
 	for pages in pending_comments.by_page():
 		for page in pages:
@@ -130,6 +130,7 @@ def run_reply() -> None:
 
 	table_client.close()
 
+
 def run_text_generation() -> None:
 	logging.debug(f":: Text Generation Timer Trigger Called")
 
@@ -172,7 +173,8 @@ def run_text_generation() -> None:
 
 def handle_incoming_message(message) -> TableRecord:
 	try:
-		incoming_message: TableRecord = json.loads(base64.b64decode(message.content), object_hook=lambda d: TableRecord(**d))
+		incoming_message: TableRecord = json.loads(base64.b64decode(message.content),
+												   object_hook=lambda d: TableRecord(**d))
 		return incoming_message
 	except Exception:
 		incoming_message: TableRecord = json.loads(message.content, object_hook=lambda d: TableRecord(**d))
@@ -186,12 +188,38 @@ def do_thing():
 	foo: TableRecord = handle_incoming_message(message)
 	bar = (foo.content_date_submitted_utc / 60) / 60
 
-def foo():
-	proxy = QueueServiceProxy()
-	service = proxy.service
-	queue_client = service.get_queue_client("prompt-queue")
-	peek = queue_client.peek_messages()
 
+def timestamp_to_hours(utc_timestamp):
+	return (datetime.datetime.utcnow() - datetime.datetime.fromtimestamp(utc_timestamp)).total_seconds() / 3600
+
+
+def foo():
+	reddit = RedditManager().get_praw_instance_for_bot("CoopBot-GPT2")
+	subreddit = reddit.subreddit("CoopAndPabloPlayHouse")
+	# submissions: [Submission] = subreddit.stream.submissions(pause_after=0)
+	submissions: [Submission] = subreddit.new()
+	for submission in submissions:
+		if submission is None:
+			break
+		else:
+			handle_comments_from_subs(submission)
+
+
+def handle_comments_from_subs(submission: Submission):
+	submission_created_hours = timestamp_to_hours(submission.created_utc)
+	if submission_created_hours > 24:
+		return
+	submission.comments.replace_more(limit=None)
+	for comment in submission.comments.list():
+		comment_created_hours = timestamp_to_hours(comment.created_utc)
+		ratio = comment_created_hours / submission_created_hours
+		delta = abs(comment_created_hours - submission_created_hours)
+		if delta <= 2 and submission.num_comments <= 200:
+			continue
+		else:
+			return comment
+			# print(f"{comment_created_hours}\t{submission_created_hours}\t{delta}\t{ratio}\t{submission.num_comments}")
+		# mapped_input: TableRecord = RedditManager().map_base_to_message(comment, "CoopBot-GPT2", "Comment")
 
 
 if __name__ == '__main__':

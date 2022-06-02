@@ -23,7 +23,8 @@ def main(tableTimer: func.TimerRequest) -> None:
 
 	client: TableClient = proxy.get_client()
 
-	workers = ["worker-1", "worker-2", "worker-3"]
+	submission_workers = ["worker-1"]
+	comment_workers = ["worker-2", "worker-3"]
 
 	query_string = "has_tried eq false and has_responded eq false and input_type eq 'Submission' and text_generation_prompt eq ''"
 
@@ -39,12 +40,10 @@ def main(tableTimer: func.TimerRequest) -> None:
 			submission_results.append(record)
 		break
 
-	submission_results
-
 	for record in submission_results:
 		processed = process_input(helper, record)
 		record.text_generation_prompt = processed
-		queue = queue_proxy.service.get_queue_client(random.choice(workers))
+		queue = queue_proxy.service.get_queue_client(random.choice(submission_workers))
 		queue.send_message(record.json)
 
 	comment_results = []
@@ -54,9 +53,9 @@ def main(tableTimer: func.TimerRequest) -> None:
 	for pages in pending_comments.by_page():
 		for page in pages:
 			record: TableRecord = json.loads(json.dumps(page), object_hook=lambda d: TableRecord(**d))
-			foo = random.randint(1, 5)
+			foo = 1
 			if foo == 1:
-				comment_results.append(record)
+				comment_results.insert(0, record)
 				e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
 				e["has_tried"] = True
 				client.update_entity(e)
@@ -68,12 +67,10 @@ def main(tableTimer: func.TimerRequest) -> None:
 				client.update_entity(e)
 		break
 
-	comment_results
-
 	for record in comment_results:
 		processed = process_input(helper, record)
 		record.text_generation_prompt = processed
-		queue = queue_proxy.service.get_queue_client(random.choice(workers))
+		queue = queue_proxy.service.get_queue_client(random.choice(comment_workers))
 		queue.send_message(record.json)
 
 

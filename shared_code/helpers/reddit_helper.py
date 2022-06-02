@@ -9,7 +9,6 @@ from praw.models.reddit.base import RedditBase
 from shared_code.models.bot_configuration import BotConfigurationManager
 from shared_code.models.table_data import TableRecord
 
-
 class RedditManager:
 	def __init__(self):
 		self.instance: dict[str, Reddit] = dict()
