@@ -1,6 +1,5 @@
 import json
 import logging
-import typing
 from typing import Optional
 
 import azure.functions as func
@@ -13,7 +12,6 @@ from shared_code.models.table_data import TableRecord
 from shared_code.storage_proxies.table_proxy import TableServiceProxy
 from shared_code.models.bot_configuration import BotConfiguration
 
-from datetime import timezone
 import datetime
 
 
@@ -41,9 +39,12 @@ def main(message: func.QueueMessage) -> None:
 	subreddit = reddit.subreddit(subs)
 
 	unsorted_submissions = []
+
 	unsorted_comments = []
-	# submissions: [Submission] = subreddit.new()
+
+	# submissions: [Submission] = subreddit.new(limit=10)
 	submissions = subreddit.stream.submissions(pause_after=0, skip_existing=False)
+	comments = subreddit.stream.comments(pause_after=0, skip_existing=False)
 	for submission in submissions:
 		if submission is None:
 			break
@@ -56,56 +57,36 @@ def main(message: func.QueueMessage) -> None:
 				logging.info(f":: The Submission is locked. Skipping")
 				continue
 
-			m = process_thing(submission, user, "Submission", table_proxy, reddit_helper)
+			m: TableRecord = handle_submission(submission, user, table_proxy, reddit_helper)
 			if m is not None:
 				unsorted_submissions.insert(0, m)
 
-			comments = handle_comments_from_subs(submission)
+	for comment in comments:
+		if comment is None:
+			break
 
-			if comments is not None:
-				for comment in comments:
-					m = process_thing(comment, user, "Comment", table_proxy, reddit_helper)
-					if m is not None:
-						unsorted_comments.insert(0, m)
-	# submissions = subreddit.stream.submissions(pause_after=0, skip_existing=False)
-	# unsorted_submissions = []
-	# for submission in submissions:
-	# 	if submission is None:
-	# 		break
-	# 	m = process_thing(submission, user, "Submission", table_proxy, reddit_helper)
-	# 	if m is not None:
-	# 		unsorted_submissions.insert(0, m)
-	#
-	# logging.info(f":: Processing Stream For comments for {bot_name}")
-	# comments = subreddit.stream.comments(pause_after=0, skip_existing=False)
-	#
-	# unsorted_comments = []
-	# for comment in comments:
-	# 	if comment is None:
-	# 		break
-	# 	m = process_thing(comment, user, "Comment", table_proxy, reddit_helper)
-	# 	if m is not None:
-	# 		unsorted_comments.insert(0, m)
-	#
-	# entries_to_write = unsorted_submissions + unsorted_comments
-	# objects_written = []
-	# for item in entries_to_write:
-	# 	entity = table_proxy.create_update_entity(item)
-	# 	objects_written.append(entity)
-	#
-	# logging.debug(f":: Process Complete, no new inputs from stream {len(objects_written)}")
-	# return
+		m = handle_comment(comment, user, table_proxy, reddit_helper)
+		if m is not None:
+			unsorted_comments.insert(0, m)
+
+	entries_to_write = unsorted_submissions + unsorted_comments
+
+	objects_written = []
+	for item in entries_to_write:
+		entity = table_proxy.create_update_entity(item)
+		objects_written.insert(0, entity)
+
+	logging.info(f":: Complete,Messages Sent - {len(objects_written)} for {bot_name}")
 
 
-def process_thing(thing: RedditBase, user: Redditor, input_type: str, proxy: TableServiceProxy, helper: RedditManager) -> Optional[TableRecord]:
-	mapped_input: TableRecord = helper.map_base_to_message(thing, user.name, input_type)
+def handle_submission(thing: Submission, user: Redditor, proxy: TableServiceProxy, helper: RedditManager) -> Optional[TableRecord]:
+	mapped_input: TableRecord = helper.map_base_to_message(thing, user.name, "Submission")
 
 	# Filter Out Where responding bot is the author
 	if mapped_input.responding_bot == mapped_input.author:
 		return None
 
-	hours_since_response = should_respond(mapped_input.content_date_submitted_utc)
-	if 16 < hours_since_response:
+	if timestamp_to_hours(thing.created_utc) > 12:
 		logging.info(f":: {mapped_input.input_type} to old {mapped_input.id}")
 		return None
 
@@ -116,32 +97,34 @@ def process_thing(thing: RedditBase, user: Redditor, input_type: str, proxy: Tab
 		return mapped_input
 
 
-def handle_comments_from_subs(submission: Submission) -> [Comment]:
-	comments = []
-	submission_created_hours = timestamp_to_hours(submission.created_utc)
-	if submission_created_hours > 12:
-		return
-	submission.comments.replace_more(limit=None)
+def handle_comment(comment: Comment, user: Redditor, proxy: TableServiceProxy, helper: RedditManager) -> Optional[TableRecord]:
+	mapped_input: TableRecord = helper.map_base_to_message(comment, user.name, "Comment")
 
-	for comment in submission.comments.list():
-		comment_created_hours = timestamp_to_hours(comment.created_utc)
-		delta = abs(comment_created_hours - submission_created_hours)
-		if delta > 2:
-			logging.info(f":: Time between comment and reply is {delta} > 2 hours...Skipping")
-			continue
-		if comment.submission.locked:
-			continue
-		if len(comment.replies.list()) >= 2:
-			logging.info(f":: Comment Has To Many Replies {len(comment.replies.list())}")
-			continue
-		else:
-			comments.insert(0, comment)
+	if mapped_input.responding_bot == mapped_input.author:
+		return None
 
-	return comments
+	if proxy.entity_exists(mapped_input):
+		return None
 
+	if comment.submission.num_comments > 200:
+		logging.info(f":: Submission for Comment Has To Many Replies {comment.submission.num_comments}")
+		return None
 
-def should_respond(utc_timestamp):
-	return (datetime.datetime.utcnow() - datetime.datetime.fromtimestamp(utc_timestamp)).total_seconds() / 3600
+	comment_created_hours = timestamp_to_hours(comment.created_utc)
+
+	submission_created_hours = timestamp_to_hours(comment.submission.created_utc)
+
+	delta = abs(comment_created_hours - submission_created_hours)
+
+	if delta > 2:
+		logging.info(f":: Time between comment and reply is {delta} > 2 hours...Skipping")
+		return None
+
+	if comment.submission.locked:
+		logging.info(f":: Comment is locked! Skipping...")
+		return None
+	else:
+		return mapped_input
 
 
 def timestamp_to_hours(utc_timestamp):

@@ -11,6 +11,7 @@ from praw.models import Submission, Comment
 
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.helpers.tagging import TaggingMixin
+from shared_code.models.table_data import Status
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 from shared_code.storage_proxies.table_proxy import TableServiceProxy, TableRecord
 from shared_code.models.bot_configuration import BotConfigurationManager, BotConfiguration
@@ -25,24 +26,20 @@ def main(tableTimer: func.TimerRequest) -> None:
 
 	client: TableClient = proxy.get_client()
 
-	bot_config_manager: BotConfigurationManager = BotConfigurationManager()
-
-	bot_config: BotConfiguration = random.choice(bot_config_manager.configurations)
-
 	submission_workers = ["worker-1"]
 	comment_workers = ["worker-2", "worker-3"]
 
-	query_string = f"has_responded eq false and input_type eq 'Submission' and text_generation_prompt eq '' and responding_bot eq '{bot_config.Name}'"
+	query_string = f"has_responded eq false and input_type eq 'Submission' and text_generation_prompt eq '' and status eq 0"
 
-	pending_submissions: ItemPaged[TableEntity] = client.query_entities(query_string, results_per_page=10)
+	pending_submissions: ItemPaged[TableEntity] = client.query_entities(query_string, results_per_page=100)
 	submission_results = []
 
-	for pages in pending_submissions.by_page():
-		for page in pages:
-			record: TableRecord = json.loads(json.dumps(page), object_hook=lambda d: TableRecord(**d))
-			e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
-			client.update_entity(e)
-			submission_results.append(record)
+	for page in pending_submissions:
+		record: TableRecord = json.loads(json.dumps(page), object_hook=lambda d: TableRecord(**d))
+		e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
+		e["status"] = 1
+		client.update_entity(e)
+		submission_results.append(record)
 		break
 
 	for record in submission_results:
@@ -52,22 +49,33 @@ def main(tableTimer: func.TimerRequest) -> None:
 		queue.send_message(record.json)
 
 	comment_results = []
-	query_string = f"has_responded eq false and input_type eq 'Comment' and text_generation_prompt eq '' and responding_bot eq '{bot_config.Name}'"
-	pending_comments: ItemPaged[TableEntity] = client.query_entities(query_string, results_per_page=10)
 
-	for pages in pending_comments.by_page():
-		for page in pages:
-			record: TableRecord = json.loads(json.dumps(page), object_hook=lambda d: TableRecord(**d))
-			comment_results.insert(0, record)
-			e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
-			client.update_entity(e)
+	query_string = f"has_responded eq false and input_type eq 'Comment' and text_generation_prompt eq '' and status eq 0"
+
+	pending_comments: ItemPaged[TableEntity] = client.query_entities(query_string, results_per_page=100)
+
+	for page in pending_comments:
+		record: TableRecord = json.loads(json.dumps(page), object_hook=lambda d: TableRecord(**d))
+		comment_results.append(record)
+		e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
+		e["status"] = 1
+		client.update_entity(e)
 		break
 
 	for record in comment_results:
 		processed = process_input(helper, record)
 		record.text_generation_prompt = processed
-		queue = queue_proxy.service.get_queue_client(random.choice(comment_workers))
-		queue.send_message(record.json)
+		choice = random.choice([1, 2, 3, 5, 6, 7, 8, 9, 10])
+		if choice == 1:
+			queue = queue_proxy.service.get_queue_client(random.choice(comment_workers))
+			e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
+			e["status"] = 1
+			client.update_entity(e)
+			queue.send_message(record.json)
+		else:
+			e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
+			e["status"] = 2
+			client.update_entity(e)
 
 
 def process_input(helper: RedditManager, incoming_message: TableRecord) -> Optional[str]:

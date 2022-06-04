@@ -63,3 +63,6 @@ class TableServiceProxy(object):
 			client.delete_entity(entity)
 
 		return None
+
+	def timestamp_to_hours(self, utc_timestamp) -> float:
+		return (datetime.datetime.utcnow() - datetime.datetime.fromtimestamp(utc_timestamp)).total_seconds() / 3600

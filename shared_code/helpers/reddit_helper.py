@@ -1,13 +1,14 @@
 import os
 import logging
-
+from datetime import datetime
 
 from praw import Reddit
 from praw.models import Submission, Comment
 from praw.models.reddit.base import RedditBase
 
 from shared_code.models.bot_configuration import BotConfigurationManager
-from shared_code.models.table_data import TableRecord
+from shared_code.models.table_data import TableRecord, Status
+
 
 class RedditManager:
 	def __init__(self):
@@ -52,6 +53,8 @@ class RedditManager:
 			text_generation_prompt="",
 			text_generation_response="",
 			has_responded=False,
-			has_tried=False
+			status=0,
+			time_in_hours=(datetime.utcnow() - datetime.fromtimestamp(thing.created)).total_seconds() / 3600
 		)
 		return message
+

@@ -5,8 +5,7 @@
       "name": "genTimer",
       "type": "timerTrigger",
       "direction": "in",
-      "schedule": "*/3 * * * * *",
-      "useMonitor": true,
+      "schedule": "*/15 * * * * *",
       "runOnStartup": true
     },
     {

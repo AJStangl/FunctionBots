@@ -1,5 +1,6 @@
 from dataclasses import dataclass, asdict
 import json
+from enum import Enum
 
 
 @dataclass
@@ -16,7 +17,9 @@ class TableRecord:
 	text_generation_prompt: str
 	text_generation_response: str
 	has_responded: bool
-	has_tried: bool
+	status: int
+	time_in_hours: float
+
 
 	@property
 	def __dict__(self):
@@ -35,3 +38,11 @@ class TableRecord:
 	@classmethod
 	def from_json(cls, json_key, json_string: dict):
 		return cls(**json_string[json_key])
+
+
+class Status(Enum):
+	PENDING = 0
+	INFLIGHT = 1
+	SKIPPED = 2
+	FAILED = 3
+	COMPLETED = 4
