@@ -8,7 +8,7 @@ import typing
 from shared_code.models.bot_configuration import BotConfigurationManager, BotConfiguration
 
 
-def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> None:
+async def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> None:
 
 	logging.debug(f':: Starting Main Process')
 
@@ -28,6 +28,7 @@ def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) 
 		messages.append(json.dumps(foo))
 
 	msg.set(messages)
+	return None
 
 
 def filter_configuration(config: BotConfiguration) -> Optional[BotConfiguration]:

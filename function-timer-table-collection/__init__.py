@@ -17,7 +17,7 @@ from shared_code.storage_proxies.table_proxy import TableServiceProxy, TableReco
 from shared_code.models.bot_configuration import BotConfigurationManager, BotConfiguration
 
 
-def main(tableTimer: func.TimerRequest) -> None:
+async def main(tableTimer: func.TimerRequest) -> None:
 	proxy: TableServiceProxy = TableServiceProxy()
 
 	queue_proxy: QueueServiceProxy = QueueServiceProxy()
@@ -43,7 +43,7 @@ def main(tableTimer: func.TimerRequest) -> None:
 		break
 
 	for record in submission_results:
-		processed = process_input(helper, record)
+		processed = await process_input(helper, record)
 		record.text_generation_prompt = processed
 		queue = queue_proxy.service.get_queue_client(random.choice(submission_workers))
 		queue.send_message(record.json)
@@ -63,10 +63,10 @@ def main(tableTimer: func.TimerRequest) -> None:
 		break
 
 	for record in comment_results:
-		processed = process_input(helper, record)
+		processed = await process_input(helper, record)
 		record.text_generation_prompt = processed
 		choice = random.choice([1, 2, 3, 5, 6, 7, 8, 9, 10])
-		if choice == 1:
+		if choice % 3 == 0:
 			queue = queue_proxy.service.get_queue_client(random.choice(comment_workers))
 			e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
 			e["status"] = 1
@@ -78,12 +78,12 @@ def main(tableTimer: func.TimerRequest) -> None:
 			client.update_entity(e)
 
 
-def process_input(helper: RedditManager, incoming_message: TableRecord) -> Optional[str]:
+async def process_input(helper: RedditManager, incoming_message: TableRecord) -> Optional[str]:
 	tagging_mixin = TaggingMixin()
 	instance = helper.get_praw_instance_for_bot(incoming_message.responding_bot)
 
 	if incoming_message.input_type == "Submission":
-		thing: Submission = instance.submission(id=incoming_message.id)
+		thing: Submission = await instance.submission(id=incoming_message.id)
 		history = tagging_mixin.collate_tagged_comment_history(thing)
 		cleaned_history = tagging_mixin.remove_username_mentions_from_string(history, incoming_message.responding_bot)
 		reply_start_tag = tagging_mixin.get_reply_tag(thing, incoming_message.responding_bot)
@@ -91,12 +91,14 @@ def process_input(helper: RedditManager, incoming_message: TableRecord) -> Optio
 		return prompt
 
 	if incoming_message.input_type == "Comment":
-		thing = instance.comment(id=incoming_message.id)
+		thing = await instance.comment(id=incoming_message.id)
 		history = tagging_mixin.collate_tagged_comment_history(thing)
 		cleaned_history = tagging_mixin.remove_username_mentions_from_string(history, incoming_message.responding_bot)
 		reply_start_tag = tagging_mixin.get_reply_tag(thing, incoming_message.responding_bot)
 		prompt = cleaned_history + reply_start_tag
 		return prompt
+
+	await instance.close()
 
 
 def timestamp_to_hours(utc_timestamp):

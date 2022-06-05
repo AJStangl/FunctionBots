@@ -6,8 +6,8 @@ import logging
 import azure.functions as func
 from azure.data.tables import TableClient, TableEntity, TableServiceClient
 from azure.storage.queue import QueueServiceClient, QueueClient, QueueMessage
-from praw import Reddit
-from praw.models import Submission, Comment
+from asyncpraw import Reddit
+from asyncpraw.models import Submission, Comment
 
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.helpers.tagging import TaggingMixin
@@ -16,7 +16,7 @@ from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 from shared_code.storage_proxies.table_proxy import TableServiceProxy
 
 
-def main(replyTimer: func.TimerRequest) -> None:
+async def main(replyTimer: func.TimerRequest) -> None:
 	bad_key_words = ["removed", "nouniqueideas007"]
 
 	tagging: TaggingMixin = TaggingMixin()
@@ -60,16 +60,17 @@ def main(replyTimer: func.TimerRequest) -> None:
 			table_client.update_entity(entity)
 
 	if record.input_type == "Submission":
-		sub_instance: Submission = reddit.submission(id=record.id)
-		sub_instance.reply(extract['body'])
+		sub_instance: Submission = await reddit.submission(id=record.id)
+		await sub_instance.reply(extract['body'])
 		table_client.update_entity(entity)
 
 	if record.input_type == "Comment":
-		comment_instance: Comment = reddit.comment(id=record.id)
-		comment_instance.reply(extract['body'])
+		comment_instance: Comment = await reddit.comment(id=record.id)
+		await comment_instance.reply(extract['body'])
 		table_client.update_entity(entity)
 
 	table_client.close()
+	await reddit.close()
 
 
 def handle_incoming_message(message) -> TableRecord:
