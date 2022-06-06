@@ -20,6 +20,7 @@ def main(genTimer: func.TimerRequest, responseMessage: func.Out[str]) -> None:
 	table_service: TableServiceClient = TableServiceProxy().service
 
 	queue_client: QueueClient = queue_service.get_queue_client("worker-1")
+
 	table_client: TableClient = table_service.get_table_client("tracking")
 
 	if len(queue_client.peek_messages()) == 0:

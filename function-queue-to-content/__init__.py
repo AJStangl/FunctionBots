@@ -106,13 +106,17 @@ def handle_comment(comment: Comment, user: Redditor, proxy: TableServiceProxy, h
 	if proxy.entity_exists(mapped_input):
 		return None
 
-	if comment.submission.num_comments > 200:
+	sub_id = comment.submission.id
+
+	instance = helper.get_praw_instance_for_bot(mapped_input.responding_bot)
+	sub = instance.submission(id=sub_id)
+	if sub.num_comments > 200:
 		logging.info(f":: Submission for Comment Has To Many Replies {comment.submission.num_comments}")
 		return None
 
 	comment_created_hours = timestamp_to_hours(comment.created_utc)
 
-	submission_created_hours = timestamp_to_hours(comment.submission.created_utc)
+	submission_created_hours = timestamp_to_hours(sub.created_utc)
 
 	delta = abs(comment_created_hours - submission_created_hours)
 

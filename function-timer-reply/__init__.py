@@ -62,11 +62,15 @@ def main(replyTimer: func.TimerRequest) -> None:
 	if record.input_type == "Submission":
 		sub_instance: Submission = reddit.submission(id=record.id)
 		sub_instance.reply(extract['body'])
+		entity["has_responded"] = True
+		entity["status"] = 4
 		table_client.update_entity(entity)
 
 	if record.input_type == "Comment":
 		comment_instance: Comment = reddit.comment(id=record.id)
 		comment_instance.reply(extract['body'])
+		entity["has_responded"] = True
+		entity["status"] = 4
 		table_client.update_entity(entity)
 
 	table_client.close()

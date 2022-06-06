@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from simpletransformers.language_generation import LanguageGenerationModel
 from shared_code.models.bot_configuration import BotConfigurationManager, BotConfiguration
@@ -20,8 +21,9 @@ class ModelTextGenerator(object):
 		start_time = time.time()
 		config = BotConfigurationManager().get_configuration_by_name(bot_username)
 
+		use_gpu = os.environ["Cuda"]
 		try:
-			model = LanguageGenerationModel("gpt2", config.Model, use_cuda=True)
+			model = LanguageGenerationModel("gpt2", config.Model, use_cuda=bool(use_gpu))
 			output_list = model.generate(prompt=prompt, args=self.default_text_generation_parameters)
 
 			end_time = time.time()
