@@ -22,7 +22,7 @@ _reply_end_tag = '<|eor|>'
 
 _end_tag = '<|'
 
-def main(submissionTimer: func.TimerRequest) -> None:
+async def main(submissionTimer: func.TimerRequest) -> None:
 	logging.info(f":: Submission Trigger Called at {time.time()}")
 	manager = BotConfigurationManager()
 	generator = ModelTextGenerator()
@@ -47,7 +47,7 @@ def main(submissionTimer: func.TimerRequest) -> None:
 		logging.debug(f":: Submitting Post to {target_sub} for {bot.Name}")
 		try:
 			logging.debug(f":: The prompt is{extracted_prompt}")
-			foo = instance.subreddit(target_sub).submit(**extracted_prompt)
+			foo = await instance.subreddit(target_sub).submit(**extracted_prompt)
 			logging.debug(foo)
 		except Exception as e:
 			logging.error(f":: Process Failed {e}")

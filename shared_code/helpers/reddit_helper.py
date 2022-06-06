@@ -2,9 +2,8 @@ import os
 import logging
 from datetime import datetime
 
-from praw import Reddit
-from praw.models import Submission, Comment
-from praw.models.reddit.base import RedditBase
+from asyncpraw import Reddit
+from asyncpraw.models.reddit.base import RedditBase
 
 from shared_code.models.bot_configuration import BotConfigurationManager
 from shared_code.models.table_data import TableRecord, Status
@@ -12,31 +11,17 @@ from shared_code.models.table_data import TableRecord, Status
 
 class RedditManager:
 	def __init__(self):
-		self.instance: dict[str, Reddit] = dict()
 		self.bot_config_manager: BotConfigurationManager = BotConfigurationManager()
 
 	def get_subs_from_configuration(self, bot_name: str) -> str:
 		subs = "+".join(self.bot_config_manager.get_configuration_by_name(bot_name).SubReddits)
 		return subs
 
-	def get_praw_instance_for_bot(self, bot_name: str) -> Reddit:
-
-		cached_instance = self.instance.get(bot_name)
-
-		if cached_instance:
-			logging.debug(f":: Using Cached PRAW Instance for {bot_name}")
-			return cached_instance
-
+	@staticmethod
+	def get_praw_instance_for_bot(bot_name: str) -> Reddit:
 		logging.debug(f":: Initializing Reddit Praw Instance for {bot_name}")
 		reddit = Reddit(site_name=bot_name)
-		self.instance[bot_name] = reddit
-
 		return reddit
-
-	@staticmethod
-	def get_all_comments_from_submission(submission: Submission) -> [Comment]:
-		submission.comments.replace_more()
-		return [comment for comment in submission.comments.list()]
 
 	@staticmethod
 	def map_base_to_message(thing: RedditBase, bot_username: str, input_type: str) -> TableRecord:
@@ -57,4 +42,3 @@ class RedditManager:
 			time_in_hours=(datetime.utcnow() - datetime.fromtimestamp(thing.created)).total_seconds() / 3600
 		)
 		return message
-
