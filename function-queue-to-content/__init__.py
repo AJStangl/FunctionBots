@@ -42,7 +42,6 @@ def main(message: func.QueueMessage) -> None:
 
 	unsorted_comments = []
 
-	# submissions: [Submission] = subreddit.new(limit=10)
 	submissions = subreddit.stream.submissions(pause_after=0, skip_existing=False)
 	comments = subreddit.stream.comments(pause_after=0, skip_existing=False)
 	for submission in submissions:
@@ -109,7 +108,9 @@ def handle_comment(comment: Comment, user: Redditor, proxy: TableServiceProxy, h
 	sub_id = comment.submission.id
 
 	instance = helper.get_praw_instance_for_bot(mapped_input.responding_bot)
+
 	sub = instance.submission(id=sub_id)
+
 	if sub.num_comments > 200:
 		logging.info(f":: Submission for Comment Has To Many Replies {comment.submission.num_comments}")
 		return None

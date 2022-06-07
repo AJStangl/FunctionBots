@@ -4,19 +4,22 @@ import os.path
 from typing import Optional
 import azure.functions as func
 import typing
+import random
 
 from shared_code.models.bot_configuration import BotConfigurationManager, BotConfiguration
 
 
-async def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> None:
-
+def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> None:
 	logging.debug(f':: Starting Main Process')
 
 	manager = BotConfigurationManager()
 
 	configs = list(filter(filter_configuration, manager.get_configuration()))
 
+	random.shuffle(configs)
+
 	messages = []
+
 
 	for item in configs:
 		foo = {
@@ -32,7 +35,6 @@ async def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[s
 
 
 def filter_configuration(config: BotConfiguration) -> Optional[BotConfiguration]:
-
 	if config.Name is None:
 		return None
 

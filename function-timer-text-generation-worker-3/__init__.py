@@ -13,7 +13,7 @@ from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 from shared_code.storage_proxies.table_proxy import TableServiceProxy
 
 
-async def main(genTimer: func.TimerRequest, responseMessage: func.Out[str]) -> None:
+def main(genTimer: func.TimerRequest, responseMessage: func.Out[str]) -> None:
 	logging.debug(f":: Text Generation Timer Trigger Called")
 
 	queue_service: QueueServiceClient = QueueServiceProxy().service

@@ -2,8 +2,8 @@ import os
 import logging
 from datetime import datetime
 
-from asyncpraw import Reddit
-from asyncpraw.models.reddit.base import RedditBase
+from praw import Reddit
+from praw.models.reddit.base import RedditBase
 
 from shared_code.models.bot_configuration import BotConfigurationManager
 from shared_code.models.table_data import TableRecord, Status
