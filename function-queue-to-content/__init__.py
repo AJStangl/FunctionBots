@@ -1,10 +1,10 @@
 import json
 import logging
+import os
 from typing import Optional
 
 import azure.functions as func
 from praw.models import Submission
-from praw.models.reddit.base import RedditBase
 from praw.reddit import Redditor, Reddit, Comment
 
 from shared_code.helpers.reddit_helper import RedditManager
@@ -48,12 +48,13 @@ def main(message: func.QueueMessage) -> None:
 		if submission is None:
 			break
 		else:
-			if submission.num_comments > 200:
-				logging.info(f":: Submission Has More Than {200} replies, skipping")
+			max_comments = int(os.environ["MaxComments"])
+			if submission.num_comments > int(max_comments):
+				logging.info(f":: Submission Has More Than {max_comments} replies, skipping")
 				continue
 
 			if submission.locked:
-				logging.info(f":: The Submission is locked. Skipping")
+				logging.debug(f":: The Submission is locked. Skipping")
 				continue
 
 			m: TableRecord = handle_submission(submission, user, table_proxy, reddit_helper)
@@ -86,7 +87,7 @@ def handle_submission(thing: Submission, user: Redditor, proxy: TableServiceProx
 		return None
 
 	if timestamp_to_hours(thing.created_utc) > 12:
-		logging.info(f":: {mapped_input.input_type} to old {mapped_input.id}")
+		logging.debug(f":: {mapped_input.input_type} to old {mapped_input.id}")
 		return None
 
 	if proxy.entity_exists(mapped_input):
@@ -111,8 +112,8 @@ def handle_comment(comment: Comment, user: Redditor, proxy: TableServiceProxy, h
 
 	sub = instance.submission(id=sub_id)
 
-	if sub.num_comments > 200:
-		logging.info(f":: Submission for Comment Has To Many Replies {comment.submission.num_comments}")
+	if sub.num_comments > int(os.environ["MaxComments"]):
+		logging.debug(f":: Submission for Comment Has To Many Replies {comment.submission.num_comments}")
 		return None
 
 	comment_created_hours = timestamp_to_hours(comment.created_utc)
@@ -121,12 +122,12 @@ def handle_comment(comment: Comment, user: Redditor, proxy: TableServiceProxy, h
 
 	delta = abs(comment_created_hours - submission_created_hours)
 
-	if delta > 2:
-		logging.info(f":: Time between comment and reply is {delta} > 2 hours...Skipping")
+	if delta > int(os.environ["MaxCommentSubmissionTimeDifference"]):
+		logging.debug(f":: Time between comment and reply is {delta} > 2 hours...Skipping")
 		return None
 
 	if comment.submission.locked:
-		logging.info(f":: Comment is locked! Skipping...")
+		logging.debug(f":: Comment is locked! Skipping...")
 		return None
 	else:
 		return mapped_input

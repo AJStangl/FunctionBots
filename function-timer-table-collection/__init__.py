@@ -70,7 +70,7 @@ def main(tableTimer: func.TimerRequest) -> None:
 			e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
 			e["status"] = 1
 			client.update_entity(e)
-			queue.send_message(record.json, time_to_live=(60 * 60))
+			queue.send_message(record.json, time_to_live=(60 * 60 * 13))
 		else:
 			e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
 			e["status"] = 2
