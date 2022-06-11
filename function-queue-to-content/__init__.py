@@ -50,7 +50,7 @@ def main(message: func.QueueMessage) -> None:
 		else:
 			max_comments = int(os.environ["MaxComments"])
 			if submission.num_comments > int(max_comments):
-				logging.info(f":: Submission Has More Than {max_comments} replies, skipping")
+				logging.debug(f":: Submission Has More Than {max_comments} replies, skipping")
 				continue
 
 			if submission.locked:

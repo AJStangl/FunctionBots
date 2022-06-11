@@ -5,7 +5,7 @@
       "name": "initializingTimer",
       "type": "timerTrigger",
       "direction": "in",
-      "schedule": "0 */1 * * * *",
+      "schedule": "*/59 * * * * *",
       "useMonitor": true,
       "runOnStartup": true
     },

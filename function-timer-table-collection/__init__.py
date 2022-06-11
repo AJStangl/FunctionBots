@@ -26,11 +26,13 @@ def main(tableTimer: func.TimerRequest) -> None:
 	client: TableClient = proxy.get_client()
 
 	submission_workers = ["worker-1"]
+
 	comment_workers = ["worker-2", "worker-3"]
 
 	query_string = f"has_responded eq false and input_type eq 'Submission' and text_generation_prompt eq '' and status eq 0"
 
 	pending_submissions: ItemPaged[TableEntity] = client.query_entities(query_string, results_per_page=100)
+
 	submission_results = []
 
 	for page in pending_submissions:
@@ -64,7 +66,7 @@ def main(tableTimer: func.TimerRequest) -> None:
 	for record in comment_results:
 		processed = process_input(helper, record)
 		record.text_generation_prompt = processed
-		choice = random.choice([1, 2, 3, 5, 6])
+		choice = random.choice([1, 2, 3, 5, 6, 7, 8, 9, 10])
 		if choice % 2 == 0:
 			queue = queue_proxy.service.get_queue_client(random.choice(comment_workers))
 			e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)

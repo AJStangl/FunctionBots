@@ -5,7 +5,7 @@ from datetime import datetime
 
 import azure.functions as func
 from azure.data.tables import TableServiceClient, TableClient
-from azure.storage.queue import QueueServiceClient, QueueClient
+from azure.storage.queue import QueueServiceClient, QueueClient, QueueMessage
 
 from shared_code.generators.text.model_text_generator import ModelTextGenerator
 from shared_code.models.table_data import TableRecord
@@ -27,7 +27,12 @@ def main(genTimer: func.TimerRequest, responseMessage: func.Out[str]) -> None:
 		logging.debug(":: No New Messages")
 		return
 
-	message = queue_client.receive_message()
+	message: QueueMessage = queue_client.receive_message()
+
+	if message.dequeue_count > 3:
+		queue_client.delete_message(message)
+
+		queue_client.close()
 
 	incoming_message: TableRecord = handle_incoming_message(message)
 
