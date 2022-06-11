@@ -27,7 +27,7 @@ class RedditManager:
 	def map_base_to_message(thing: RedditBase, bot_username: str, input_type: str) -> TableRecord:
 		message = TableRecord(
 			PartitionKey=bot_username,
-			RowKey=f"{bot_username}|{input_type}|{thing.id}",
+			RowKey=f"{thing.created}|{bot_username}",
 			id=thing.id,
 			name_id=thing.id,
 			subreddit=thing.subreddit.display_name,

@@ -122,8 +122,10 @@ def handle_comment(comment: Comment, user: Redditor, proxy: TableServiceProxy, h
 
 	delta = abs(comment_created_hours - submission_created_hours)
 
+	max_comment_submission_diff = int(os.environ["MaxCommentSubmissionTimeDifference"])
+
 	if delta > int(os.environ["MaxCommentSubmissionTimeDifference"]):
-		logging.debug(f":: Time between comment and reply is {delta} > 2 hours...Skipping")
+		logging.debug(f":: Time between comment and reply is {delta} > {max_comment_submission_diff} hours...Skipping")
 		return None
 
 	if comment.submission.locked:

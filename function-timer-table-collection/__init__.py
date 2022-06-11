@@ -6,11 +6,11 @@ from typing import Optional
 import azure.functions as func
 from azure.core.paging import ItemPaged
 from azure.data.tables import TableClient, TableEntity
-from azure.storage.queue import QueueMessage
 from praw.models import Submission
 
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.helpers.tagging import TaggingMixin
+from shared_code.models.bot_configuration import BotConfigurationManager
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 from shared_code.storage_proxies.table_proxy import TableServiceProxy, TableRecord
 
@@ -25,13 +25,19 @@ def main(tableTimer: func.TimerRequest) -> None:
 
 	client: TableClient = proxy.get_client()
 
+	bot_config_manager = BotConfigurationManager()
+
 	submission_workers = ["worker-1"]
 
 	comment_workers = ["worker-2", "worker-3"]
 
+	bot_list = [item.Name for item in bot_config_manager.get_configuration()]
+
+	selected_bot = random.choice(bot_list)
+
 	query_string = f"has_responded eq false and input_type eq 'Submission' and text_generation_prompt eq '' and status eq 0"
 
-	pending_submissions: ItemPaged[TableEntity] = client.query_entities(query_string, results_per_page=100)
+	pending_submissions: ItemPaged[TableEntity] = client.query_entities(query_string)
 
 	submission_results = []
 
@@ -51,9 +57,9 @@ def main(tableTimer: func.TimerRequest) -> None:
 
 	comment_results = []
 
-	query_string = f"has_responded eq false and input_type eq 'Comment' and text_generation_prompt eq '' and status eq 0"
+	query_string = f"has_responded eq false and input_type eq 'Comment' and text_generation_prompt eq '' and status eq 0 and responding_bot eq '{selected_bot}'"
 
-	pending_comments: ItemPaged[TableEntity] = client.query_entities(query_string, results_per_page=100)
+	pending_comments: ItemPaged[TableEntity] = client.query_entities(query_string)
 
 	for page in pending_comments:
 		record: TableRecord = json.loads(json.dumps(page), object_hook=lambda d: TableRecord(**d))
@@ -66,13 +72,20 @@ def main(tableTimer: func.TimerRequest) -> None:
 	for record in comment_results:
 		processed = process_input(helper, record)
 		record.text_generation_prompt = processed
+		if bot_config_manager.get_configuration_by_name(record.author) is None:
+			queue = queue_proxy.service.get_queue_client(random.choice(comment_workers))
+			e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
+			e["status"] = 1
+			client.update_entity(e)
+			queue.send_message(record.json, time_to_live=(60 * 60 * 12))
+
 		choice = random.choice([1, 2, 3, 5, 6, 7, 8, 9, 10])
 		if choice % 2 == 0:
 			queue = queue_proxy.service.get_queue_client(random.choice(comment_workers))
 			e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
 			e["status"] = 1
 			client.update_entity(e)
-			queue.send_message(record.json, time_to_live=(60 * 60 * 13))
+			queue.send_message(record.json, time_to_live=(60 * 60 * 12))
 		else:
 			e = client.get_entity(partition_key=record.PartitionKey, row_key=record.RowKey)
 			e["status"] = 2

@@ -17,11 +17,15 @@ from shared_code.storage_proxies.table_proxy import TableServiceProxy
 
 
 def main(replyTimer: func.TimerRequest) -> None:
+
 	bad_key_words = ["removed", "nouniqueideas007"]
 
 	tagging: TaggingMixin = TaggingMixin()
+
 	queue_service: QueueServiceClient = QueueServiceProxy().service
+
 	table_service: TableServiceClient = TableServiceProxy().service
+
 	helper: RedditManager = RedditManager()
 
 	queue_client: QueueClient = queue_service.get_queue_client("reply-queue")

@@ -168,10 +168,13 @@ class TaggingMixin:
 
 		return tagged_text
 
-	def extract_reply_from_generated_text(self, prompt, generated_text) -> dict:
+	def extract_reply_from_generated_text(self, prompt: str, generated_text: str) -> dict:
+
+		if prompt is None or generated_text is None:
+			return {}
 
 		# remove any cruft
-		# generated_text = generated_text.replace('&amp;#x200B;\n', '')
+		generated_text = generated_text.replace('&amp;#x200B;\n', '')
 
 		# find the first instance of the end-of-comment tag, starting from the end of the prompt
 		index_of_truncate = generated_text.find(self._end_tag, len(prompt))
@@ -201,7 +204,9 @@ class TaggingMixin:
 		return {}
 
 	def extract_title_from_generated_text(self, generated_text):
+
 		idx_title_start = generated_text.find(self._title_start_tag)
+
 		idx_title_end = generated_text.find(self._end_tag, (idx_title_start + len(self._title_start_tag)))
 
 		if idx_title_start == -1 or idx_title_end == -1:
@@ -210,19 +215,21 @@ class TaggingMixin:
 
 		title_text = generated_text[idx_title_start + len(self._title_start_tag):idx_title_end]
 
-		if (0 < len(title_text) < 300):
+		if 0 < len(title_text) < 300:
 			# Validate the title length is within reddit's range
 			return self._decode_generated_text(title_text)
 
 	def extract_selftext_from_generated_text(self, generated_text):
 
 		idx_st_start = generated_text.find(self._selftext_start_tag)
+
 		idx_st_end = generated_text.find(self._end_tag, (idx_st_start + len(self._selftext_start_tag)))
 
 		if idx_st_start == -1 or idx_st_end == -1:
 			return None
 
 		selftext_text = generated_text[idx_st_start + len(self._selftext_start_tag):idx_st_end]
+
 		return self._decode_generated_text(selftext_text)
 
 	def extract_submission_from_generated_text(self, generated_text):

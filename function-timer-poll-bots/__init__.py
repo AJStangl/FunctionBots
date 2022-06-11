@@ -20,7 +20,6 @@ def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) 
 
 	messages = []
 
-
 	for item in configs:
 		foo = {
 			"Name": item.Name,
@@ -30,7 +29,10 @@ def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) 
 
 		messages.append(json.dumps(foo))
 
+	random.shuffle(messages)
+
 	msg.set(messages)
+
 	return None
 
 
@@ -39,13 +41,13 @@ def filter_configuration(config: BotConfiguration) -> Optional[BotConfiguration]
 		return None
 
 	if not os.path.exists(config.Model):
-		logging.debug(f":: {config.Name} does not have a valid model path. Skipping...")
+		logging.info(f":: {config.Name} does not have a valid model path. Skipping...")
 		return None
 
 	if len(config.SubReddits) == 0:
-		logging.debug(f":: {config.Name} is not configured to run. Skipping...")
+		logging.info(f":: {config.Name} is not configured to run. Skipping...")
 		return None
 
-	logging.debug(f":: {config.Name} sent for processing")
+	logging.info(f":: {config.Name} sent for processing")
 
 	return config
