@@ -1,12 +1,8 @@
-import os
 import logging
-from datetime import datetime
 
 from praw import Reddit
-from praw.models.reddit.base import RedditBase
 
 from shared_code.models.bot_configuration import BotConfigurationManager
-from shared_code.models.table_data import TableRecord, Status
 
 
 class RedditManager:
@@ -22,23 +18,3 @@ class RedditManager:
 		logging.debug(f":: Initializing Reddit Praw Instance for {bot_name}")
 		reddit = Reddit(site_name=bot_name)
 		return reddit
-
-	@staticmethod
-	def map_base_to_message(thing: RedditBase, bot_username: str, input_type: str) -> TableRecord:
-		message = TableRecord(
-			PartitionKey=bot_username,
-			RowKey=f"{thing.created}|{bot_username}",
-			id=thing.id,
-			name_id=thing.id,
-			subreddit=thing.subreddit.display_name,
-			input_type=input_type,
-			content_date_submitted_utc=thing.created,
-			author=getattr(thing.author, 'name', ''),
-			responding_bot=bot_username,
-			text_generation_prompt="",
-			text_generation_response="",
-			has_responded=False,
-			status=0,
-			time_in_hours=(datetime.utcnow() - datetime.fromtimestamp(thing.created)).total_seconds() / 3600
-		)
-		return message

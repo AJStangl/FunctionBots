@@ -1,27 +1,27 @@
-import base64
 import json
 import logging
 from datetime import datetime
 
 import azure.functions as func
-from azure.data.tables import TableServiceClient, TableClient
 from azure.storage.queue import QueueServiceClient, QueueClient, QueueMessage
 
+from shared_code.database.repository import DataRepository
+from shared_code.database.table_model import TableRecord, TableHelper
 from shared_code.generators.text.model_text_generator import ModelTextGenerator
-from shared_code.models.table_data import TableRecord
+from shared_code.services.reply_service import ReplyService
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
-from shared_code.storage_proxies.table_proxy import TableServiceProxy
 
 
 def main(genTimer: func.TimerRequest, responseMessage: func.Out[str]) -> None:
 	logging.debug(f":: Text Generation Timer Trigger Called")
 
+	reply_service: ReplyService = ReplyService()
+
 	queue_service: QueueServiceClient = QueueServiceProxy().service
-	table_service: TableServiceClient = TableServiceProxy().service
+
+	repository: DataRepository = DataRepository()
 
 	queue_client: QueueClient = queue_service.get_queue_client("worker-2")
-
-	table_client: TableClient = table_service.get_table_client("tracking")
 
 	if len(queue_client.peek_messages()) == 0:
 		logging.debug(":: No New Messages")
@@ -32,13 +32,11 @@ def main(genTimer: func.TimerRequest, responseMessage: func.Out[str]) -> None:
 	if message.dequeue_count > 3:
 		queue_client.delete_message(message)
 
-		queue_client.close()
+	incoming_message: TableRecord = TableHelper.handle_incoming_message(message)
 
-	incoming_message: TableRecord = handle_incoming_message(message)
+	bot_name = incoming_message["RespondingBot"]
 
-	bot_name = incoming_message.responding_bot
-
-	prompt = incoming_message.text_generation_prompt
+	prompt = incoming_message["TextGenerationPrompt"]
 
 	logging.debug(f":: Trigger For Model Generation called at {datetime.now()} for {bot_name}")
 
@@ -46,26 +44,16 @@ def main(genTimer: func.TimerRequest, responseMessage: func.Out[str]) -> None:
 
 	result = model_generator.generate_text(bot_name, prompt)
 
-	entity = table_client.get_entity(partition_key=incoming_message.PartitionKey, row_key=incoming_message.RowKey)
+	entity = repository.get_entity_by_id(incoming_message["Id"])
 
-	entity["text_generation_prompt"] = prompt
+	entity.TextGenerationPrompt = prompt
 
-	entity["text_generation_response"] = result
+	entity.TextGenerationResponse = result
 
-	table_client.update_entity(entity)
+	repository.update_entity(entity)
 
 	queue_client.delete_message(message)
 
-	queue_client.close()
+	responseMessage.set(json.dumps(entity.as_dict()))
 
-	responseMessage.set(json.dumps(entity))
-
-
-def handle_incoming_message(message) -> TableRecord:
-	try:
-		incoming_message: TableRecord = json.loads(base64.b64decode(message.content), object_hook=lambda d: TableRecord(**d))
-		return incoming_message
-	except Exception:
-		incoming_message: TableRecord = json.loads(message.content, object_hook=lambda d: TableRecord(**d))
-		return incoming_message
-
+	reply_service.invoke()

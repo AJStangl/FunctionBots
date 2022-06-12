@@ -20,14 +20,14 @@ def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) 
 
 	messages = []
 
-	for item in configs:
-		foo = {
-			"Name": item.Name,
-			"Model": item.Model,
-			"SubReddits": json.dumps(item.SubReddits)
+	for config in configs:
+		message = {
+			"Name": config.Name,
+			"Model": config.Model,
+			"SubReddits": json.dumps(config.SubReddits)
 		}
 
-		messages.append(json.dumps(foo))
+		messages.append(json.dumps(message))
 
 	random.shuffle(messages)
 
@@ -37,6 +37,7 @@ def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) 
 
 
 def filter_configuration(config: BotConfiguration) -> Optional[BotConfiguration]:
+
 	if config.Name is None:
 		return None
 

@@ -8,19 +8,17 @@ from praw.models import Submission
 from praw.reddit import Redditor, Reddit, Comment
 
 from shared_code.helpers.reddit_helper import RedditManager
-from shared_code.models.table_data import TableRecord
-from shared_code.storage_proxies.table_proxy import TableServiceProxy
+from shared_code.database.repository import DataRepository
+from shared_code.database.table_model import TableRecord, TableHelper
 from shared_code.models.bot_configuration import BotConfiguration
-
 import datetime
 
-
 def main(message: func.QueueMessage) -> None:
-	logging.debug(f":: Trigger For Polling Comment/Submission called at {datetime.date.today()}")
+	logging.info(f":: Trigger For Polling Comment/Submission called at {datetime.date.today()}")
 
 	reddit_helper: RedditManager = RedditManager()
 
-	table_proxy: TableServiceProxy = TableServiceProxy()
+	repository: DataRepository = DataRepository()
 
 	message_json = message.get_body().decode('utf-8')
 
@@ -38,12 +36,10 @@ def main(message: func.QueueMessage) -> None:
 
 	subreddit = reddit.subreddit(subs)
 
-	unsorted_submissions = []
-
-	unsorted_comments = []
-
 	submissions = subreddit.stream.submissions(pause_after=0, skip_existing=False)
+
 	comments = subreddit.stream.comments(pause_after=0, skip_existing=False)
+
 	for submission in submissions:
 		if submission is None:
 			break
@@ -57,58 +53,56 @@ def main(message: func.QueueMessage) -> None:
 				logging.debug(f":: The Submission is locked. Skipping")
 				continue
 
-			m: TableRecord = handle_submission(submission, user, table_proxy, reddit_helper)
-			if m is not None:
-				unsorted_submissions.insert(0, m)
+			handle_submission(submission, user, repository)
 
 	for comment in comments:
 		if comment is None:
 			break
 
-		m = handle_comment(comment, user, table_proxy, reddit_helper)
-		if m is not None:
-			unsorted_comments.insert(0, m)
+		handle_comment(comment, user, repository, reddit_helper)
 
-	entries_to_write = unsorted_submissions + unsorted_comments
+	
 
-	objects_written = []
-	for item in entries_to_write:
-		entity = table_proxy.create_update_entity(item)
-		objects_written.insert(0, entity)
-
-	logging.info(f":: Complete,Messages Sent - {len(objects_written)} for {bot_name}")
-
-
-def handle_submission(thing: Submission, user: Redditor, proxy: TableServiceProxy, helper: RedditManager) -> Optional[TableRecord]:
-	mapped_input: TableRecord = helper.map_base_to_message(thing, user.name, "Submission")
+def handle_submission(thing: Submission, user: Redditor, repository: DataRepository) -> Optional[TableRecord]:
+	# thing, user.name, "Submission"
+	mapped_input: TableRecord = TableHelper.map_base_to_message(
+		reddit_id=thing.id,
+		sub_reddit=thing.subreddit.display_name,
+		input_type="Submission",
+		submitted_date=thing.created,
+		author=getattr(thing.author, 'name', ''),
+		responding_bot=user.name
+	)
 
 	# Filter Out Where responding bot is the author
-	if mapped_input.responding_bot == mapped_input.author:
+	if mapped_input.RespondingBot == mapped_input.Author:
 		return None
 
-	if timestamp_to_hours(thing.created_utc) > 12:
-		logging.debug(f":: {mapped_input.input_type} to old {mapped_input.id}")
+	if timestamp_to_hours(thing.created_utc) > 6:
+		logging.debug(f":: {mapped_input.InputType} to old {mapped_input.Id}")
 		return None
 
-	if proxy.entity_exists(mapped_input):
-		return None
+	entity = repository.create_if_not_exist(mapped_input)
 
-	else:
-		return mapped_input
+	return entity
 
 
-def handle_comment(comment: Comment, user: Redditor, proxy: TableServiceProxy, helper: RedditManager) -> Optional[TableRecord]:
-	mapped_input: TableRecord = helper.map_base_to_message(comment, user.name, "Comment")
+def handle_comment(comment: Comment, user: Redditor, repository: DataRepository, helper: RedditManager) -> Optional[TableRecord]:
+	mapped_input: TableRecord = TableHelper.map_base_to_message(
+		reddit_id=comment.id,
+		sub_reddit=comment.subreddit.display_name,
+		input_type="Comment",
+		submitted_date=comment.created,
+		author=getattr(comment.author, 'name', ''),
+		responding_bot=user.name
+	)
 
-	if mapped_input.responding_bot == mapped_input.author:
-		return None
-
-	if proxy.entity_exists(mapped_input):
+	if mapped_input.RespondingBot == mapped_input.Author:
 		return None
 
 	sub_id = comment.submission.id
 
-	instance = helper.get_praw_instance_for_bot(mapped_input.responding_bot)
+	instance = helper.get_praw_instance_for_bot(user.name)
 
 	sub = instance.submission(id=sub_id)
 
@@ -132,7 +126,8 @@ def handle_comment(comment: Comment, user: Redditor, proxy: TableServiceProxy, h
 		logging.debug(f":: Comment is locked! Skipping...")
 		return None
 	else:
-		return mapped_input
+		entity = repository.create_if_not_exist(mapped_input)
+		return entity
 
 
 def timestamp_to_hours(utc_timestamp):

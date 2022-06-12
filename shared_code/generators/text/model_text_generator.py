@@ -17,11 +17,14 @@ class ModelTextGenerator(object):
 			'stop_token': '<|endoftext|>',
 		}
 
-	def generate_text(self, bot_username, prompt) -> str:
+	def generate_text(self, bot_username, prompt, default_cuda: bool = True) -> str:
 		start_time = time.time()
 		config = BotConfigurationManager().get_configuration_by_name(bot_username)
 
-		use_gpu = os.environ["Cuda"]
+		if default_cuda:
+			use_gpu = os.environ["Cuda"]
+		else:
+			use_gpu = False
 		try:
 			model = LanguageGenerationModel("gpt2", config.Model, use_cuda=bool(use_gpu))
 			output_list = model.generate(prompt=prompt, args=self.default_text_generation_parameters)

@@ -78,7 +78,7 @@ class TaggingMixin:
 		# It's just a straight reply
 		return self._reply_start_tag
 
-	def _get_random_new_submission_tag(self, subreddit, use_reply_sense=True):
+	def get_random_new_submission_tag(self, subreddit, use_reply_sense=True):
 		import random
 		# random is already seeded in reddit_io init
 		random_value = random.random()
