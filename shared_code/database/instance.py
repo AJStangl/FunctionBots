@@ -6,7 +6,7 @@ conn = psycopg2.connect(conn_string)
 
 user = os.environ['PsqlUser']
 password = os.environ['PsqlPassword']
-engine = create_engine(f"postgresql://{user}:{password}@localhost:5432/redditData", pool_size=10, max_overflow=-1)
+engine = create_engine(f"postgresql://{user}:{password}@localhost:5432/redditData", pool_size=30, max_overflow=-1)
 
 
 

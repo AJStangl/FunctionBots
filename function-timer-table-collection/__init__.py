@@ -4,9 +4,11 @@ from datetime import datetime
 from typing import Optional
 
 import azure.functions as func
+from azure.storage.queue import QueueClient, QueueMessage
 from praw.models import Submission
 
 from shared_code.database.repository import DataRepository, TableRecord
+from shared_code.database.table_model import TableHelper
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.helpers.tagging import TaggingMixin
 from shared_code.models.bot_configuration import BotConfigurationManager
@@ -27,9 +29,42 @@ def main(tableTimer: func.TimerRequest) -> None:
 
 	comment_workers = ["worker-2", "worker-3"]
 
-	pending_submissions = repository.search_for_pending("Submission")
+	bots = [item.Name for item in bot_config_manager.configurations]
 
-	for record in pending_submissions:
+	bot = random.choice(bots)
+
+	pending_comments = repository.search_for_pending("Comment", bot)
+
+	for entity in pending_comments:
+		if entity is None:
+			continue
+		record = entity['TableRecord']
+		record.Status = 1
+		processed = process_input(helper, record)
+		record.TextGenerationPrompt = processed
+		if bot_config_manager.get_configuration_by_name(record.Author) is None:
+			queue = queue_proxy.service.get_queue_client(random.choice(submission_workers))
+			queue.send_message(json.dumps(record.as_dict()))
+			repository.update_entity(record)
+			continue
+
+		choice = random.choice([2])
+		if choice % 2 == 0:
+			queue = queue_proxy.service.get_queue_client(random.choice(comment_workers))
+			queue.send_message(json.dumps(record.as_dict()))
+			repository.update_entity(record)
+			continue
+		else:
+			record.Status = 2
+			repository.update_entity(record)
+			continue
+
+	pending_submissions = repository.search_for_pending("Submission", bot)
+
+	for entity in pending_submissions:
+		if entity is None:
+			continue
+		record = entity['TableRecord']
 		record.Status = 1
 		processed = process_input(helper, record)
 		record.TextGenerationPrompt = processed
@@ -37,25 +72,7 @@ def main(tableTimer: func.TimerRequest) -> None:
 		queue = queue_proxy.service.get_queue_client(random.choice(submission_workers))
 		queue.send_message(json.dumps(record.as_dict()))
 
-	pending_comments = repository.search_for_pending("Comment")
 
-	for record in pending_comments:
-		record.Status = 1
-		processed = process_input(helper, record)
-		record.TextGenerationPrompt = processed
-		if bot_config_manager.get_configuration_by_name(record.Author) is None:
-			queue = queue_proxy.service.get_queue_client(random.choice(submission_workers))
-			queue.send_message(json.dumps(record.as_dict()), time_to_live=(60 * 60 * 12))
-			repository.update_entity(record)
-
-		choice = random.choice([1, 2, 3, 5, 6, 7, 8, 9, 10])
-		if choice % 2 == 0:
-			queue = queue_proxy.service.get_queue_client(random.choice(comment_workers))
-			queue.send_message(json.dumps(record.as_dict()), time_to_live=(60 * 60 * 12))
-			repository.update_entity(record)
-		else:
-			record.Status = 2
-			repository.update_entity(record)
 
 
 def process_input(helper: RedditManager, record: TableRecord) -> Optional[str]:

@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import typing
 from typing import Optional
 
 import azure.functions as func
@@ -61,7 +62,9 @@ def main(message: func.QueueMessage) -> None:
 
 		handle_comment(comment, user, repository, reddit_helper)
 
-	
+	return None
+
+
 
 def handle_submission(thing: Submission, user: Redditor, repository: DataRepository) -> Optional[TableRecord]:
 	# thing, user.name, "Submission"

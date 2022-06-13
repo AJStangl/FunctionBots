@@ -14,7 +14,8 @@
   },
   "logging": {
     "logLevel": {
-      "default": "Information"
+      "default": "Information",
+      "azure.core.pipeline.policies.http_logging_policy": "None"
     }
   }
 }
