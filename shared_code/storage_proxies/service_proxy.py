@@ -8,6 +8,9 @@ from shared_code.models.azure_configuration import FunctionAppConfiguration
 
 
 class QueueServiceProxy(object):
+	logger = logging.getLogger("azure.core.pipeline.policies.http_logging_policy")
+	logger.setLevel(logging.WARNING)
+
 	def __init__(self):
 		self.config: FunctionAppConfiguration = FunctionAppConfiguration()
 		self.account_name: str = self.config.account_name

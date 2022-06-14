@@ -5,7 +5,7 @@
       "name": "genTimer",
       "type": "timerTrigger",
       "direction": "in",
-      "schedule": "*/15 * * * * *"
+      "schedule": "*/1 * * * * *"
     },
     {
       "type": "queue",

@@ -2,12 +2,11 @@
   "scriptFile": "__init__.py",
   "bindings": [
     {
-      "name": "tableTimer",
-      "type": "timerTrigger",
+      "name": "message",
+      "type": "queueTrigger",
       "direction": "in",
-      "schedule": "*/15 * * * * *",
-      "useMonitor": true,
-      "runOnStartUp": true
+      "queueName": "trigger-queue",
+      "connection": "AzureWebJobsStorage"
     }
   ]
 }

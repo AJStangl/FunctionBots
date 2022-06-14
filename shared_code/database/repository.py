@@ -31,7 +31,13 @@ class DataRepository:
 
 	def search_for_pending(self, input_type: str, bot_name: str):
 		session = Session(engine)
-		entity = session.execute(select(TableRecord).where(TableRecord.TextGenerationPrompt == "").where(TableRecord.Status == 0).where(TableRecord.InputType == input_type).where(TableRecord.RespondingBot == bot_name)).all()
+		entity = session.execute(
+			select(TableRecord)
+				.where(TableRecord.TextGenerationPrompt == "")
+				.where(TableRecord.Status == 0)
+				.where(TableRecord.InputType == input_type)
+				.order_by(TableRecord.ContentDateSubmitted))\
+			.all()
 		session.close()
 		return entity
 

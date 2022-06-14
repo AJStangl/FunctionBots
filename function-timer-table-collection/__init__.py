@@ -1,4 +1,5 @@
 import json
+import logging
 import random
 from datetime import datetime
 from typing import Optional
@@ -15,7 +16,12 @@ from shared_code.models.bot_configuration import BotConfigurationManager
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 
 
-def main(tableTimer: func.TimerRequest) -> None:
+def main(message: func.QueueMessage) -> None:
+	bot_config = json.loads(message.get_body().decode('utf-8'))
+
+	bot_name = bot_config["Name"]
+
+	logging.info(f":: Starting Table Collection For {bot_name}")
 
 	repository: DataRepository = DataRepository()
 
@@ -33,7 +39,7 @@ def main(tableTimer: func.TimerRequest) -> None:
 
 	bot = random.choice(bots)
 
-	pending_comments = repository.search_for_pending("Comment", bot)
+	pending_comments = repository.search_for_pending("Comment", bot_name)
 
 	for entity in pending_comments:
 		if entity is None:
@@ -48,8 +54,8 @@ def main(tableTimer: func.TimerRequest) -> None:
 			repository.update_entity(record)
 			continue
 
-		choice = random.choice([2])
-		if choice % 2 == 0:
+		choice = random.randint(1, 100)
+		if choice > 30:
 			queue = queue_proxy.service.get_queue_client(random.choice(comment_workers))
 			queue.send_message(json.dumps(record.as_dict()))
 			repository.update_entity(record)

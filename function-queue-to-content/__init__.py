@@ -14,7 +14,7 @@ from shared_code.database.table_model import TableRecord, TableHelper
 from shared_code.models.bot_configuration import BotConfiguration
 import datetime
 
-def main(message: func.QueueMessage) -> None:
+def main(message: func.QueueMessage, msg: func.Out[str]) -> None:
 	logging.info(f":: Trigger For Polling Comment/Submission called at {datetime.date.today()}")
 
 	reddit_helper: RedditManager = RedditManager()
@@ -38,29 +38,29 @@ def main(message: func.QueueMessage) -> None:
 	subreddit = reddit.subreddit(subs)
 
 	submissions = subreddit.stream.submissions(pause_after=0, skip_existing=False)
-
-	comments = subreddit.stream.comments(pause_after=0, skip_existing=False)
-
 	for submission in submissions:
 		if submission is None:
 			break
 		else:
 			max_comments = int(os.environ["MaxComments"])
 			if submission.num_comments > int(max_comments):
-				logging.debug(f":: Submission Has More Than {max_comments} replies, skipping")
+				logging.info(f":: Submission Has More Than {max_comments} replies, skipping")
 				continue
 
 			if submission.locked:
-				logging.debug(f":: The Submission is locked. Skipping")
+				logging.info(f":: The Submission is locked. Skipping")
 				continue
 
 			handle_submission(submission, user, repository)
 
+	comments = subreddit.stream.comments(pause_after=0, skip_existing=False)
 	for comment in comments:
 		if comment is None:
 			break
 
 		handle_comment(comment, user, repository, reddit_helper)
+
+	msg.set(message_json)
 
 	return None
 
@@ -110,7 +110,7 @@ def handle_comment(comment: Comment, user: Redditor, repository: DataRepository,
 	sub = instance.submission(id=sub_id)
 
 	if sub.num_comments > int(os.environ["MaxComments"]):
-		logging.debug(f":: Submission for Comment Has To Many Replies {comment.submission.num_comments}")
+		logging.info(f":: Submission for Comment Has To Many Replies {comment.submission.num_comments}")
 		return None
 
 	comment_created_hours = timestamp_to_hours(comment.created_utc)
@@ -122,11 +122,11 @@ def handle_comment(comment: Comment, user: Redditor, repository: DataRepository,
 	max_comment_submission_diff = int(os.environ["MaxCommentSubmissionTimeDifference"])
 
 	if delta > int(os.environ["MaxCommentSubmissionTimeDifference"]):
-		logging.debug(f":: Time between comment and reply is {delta} > {max_comment_submission_diff} hours...Skipping")
+		logging.info(f":: Time between comment and reply is {delta} > {max_comment_submission_diff} hours...Skipping")
 		return None
 
 	if comment.submission.locked:
-		logging.debug(f":: Comment is locked! Skipping...")
+		logging.info(f":: Comment is locked! Skipping...")
 		return None
 	else:
 		entity = repository.create_if_not_exist(mapped_input)
