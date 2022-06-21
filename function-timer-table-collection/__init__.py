@@ -5,11 +5,9 @@ from datetime import datetime
 from typing import Optional
 
 import azure.functions as func
-from azure.storage.queue import QueueClient, QueueMessage
 from praw.models import Submission
 
 from shared_code.database.repository import DataRepository, TableRecord
-from shared_code.database.table_model import TableHelper
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.helpers.tagging import TaggingMixin
 from shared_code.models.bot_configuration import BotConfigurationManager
