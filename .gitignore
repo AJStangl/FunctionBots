@@ -141,3 +141,6 @@ __queuestorage__/*
 .vscode/*
 
 cache_dir/*
+/bot.db
+/bot-db.sqlite3
+/shared_code/database/bot-db.sqlite3

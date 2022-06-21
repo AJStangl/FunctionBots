@@ -9,8 +9,8 @@ from shared_code.database.table_model import TableRecord
 
 class DataRepository:
 	def __init__(self):
-		self.user = os.environ['PsqlUser']
-		self.password = os.environ['PsqlPassword']
+		self._user = os.environ['PsqlUser']
+		self._password = os.environ['PsqlPassword']
 
 	def create_entry(self, record: TableRecord):
 		session = Session(engine)
