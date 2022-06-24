@@ -15,6 +15,7 @@ from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 
 
 def main(message: func.QueueMessage) -> None:
+
 	bot_config = json.loads(message.get_body().decode('utf-8'))
 
 	bot_name = bot_config["Name"]
@@ -53,6 +54,7 @@ def main(message: func.QueueMessage) -> None:
 			continue
 
 		choice = random.randint(1, 100)
+		# choice = 40
 		if choice > 30:
 			queue = queue_proxy.service.get_queue_client(random.choice(comment_workers))
 			queue.send_message(json.dumps(record.as_dict()))
@@ -68,6 +70,7 @@ def main(message: func.QueueMessage) -> None:
 	for entity in pending_submissions:
 		if entity is None:
 			continue
+
 		record = entity['TableRecord']
 		record.Status = 1
 		processed = process_input(helper, record)
@@ -75,8 +78,6 @@ def main(message: func.QueueMessage) -> None:
 		repository.update_entity(record)
 		queue = queue_proxy.service.get_queue_client(random.choice(submission_workers))
 		queue.send_message(json.dumps(record.as_dict()))
-
-
 
 
 def process_input(helper: RedditManager, record: TableRecord) -> Optional[str]:

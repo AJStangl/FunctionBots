@@ -15,6 +15,7 @@ from shared_code.models.bot_configuration import BotConfiguration
 import datetime
 
 def main(message: func.QueueMessage, msg: func.Out[str]) -> None:
+
 	logging.info(f":: Trigger For Polling Comment/Submission called at {datetime.date.today()}")
 
 	reddit_helper: RedditManager = RedditManager()
@@ -23,15 +24,18 @@ def main(message: func.QueueMessage, msg: func.Out[str]) -> None:
 
 	message_json = message.get_body().decode('utf-8')
 
+	logging.info(f":: Sending {message_json} to next queue")
+	msg.set(message_json)
+
 	incoming_message: BotConfiguration = json.loads(message_json, object_hook=lambda d: BotConfiguration(**d))
 
 	bot_name = incoming_message.Name
 
-	reddit: Reddit = reddit_helper.get_praw_instance_for_bot(bot_name)
+	reddit = reddit_helper.get_praw_instance_for_bot(bot_name)
 
 	user = reddit.user.me()
 
-	logging.debug(f":: Polling For Submissions for User: {user.name}")
+	logging.info(f":: Polling For Submissions for User: {user.name}")
 
 	subs = reddit_helper.get_subs_from_configuration(bot_name)
 
@@ -41,26 +45,23 @@ def main(message: func.QueueMessage, msg: func.Out[str]) -> None:
 	for submission in submissions:
 		if submission is None:
 			break
-		else:
-			max_comments = int(os.environ["MaxComments"])
-			if submission.num_comments > int(max_comments):
-				logging.info(f":: Submission Has More Than {max_comments} replies, skipping")
-				continue
 
-			if submission.locked:
-				logging.info(f":: The Submission is locked. Skipping")
-				continue
+		max_comments = int(os.environ["MaxComments"])
+		if submission.num_comments > int(max_comments):
+			logging.info(f":: Submission Has More Than {max_comments} replies, skipping")
+			continue
 
-			handle_submission(submission, user, repository)
+		if submission.locked:
+			logging.info(f":: The Submission is locked. Skipping")
+			continue
+
+		handle_submission(submission, user, repository)
 
 	comments = subreddit.stream.comments(pause_after=0, skip_existing=False)
 	for comment in comments:
 		if comment is None:
 			break
-
 		handle_comment(comment, user, repository, reddit_helper)
-
-	msg.set(message_json)
 
 	return None
 
@@ -81,8 +82,8 @@ def handle_submission(thing: Submission, user: Redditor, repository: DataReposit
 	if mapped_input.RespondingBot == mapped_input.Author:
 		return None
 
-	if timestamp_to_hours(thing.created_utc) > 6:
-		logging.debug(f":: {mapped_input.InputType} to old {mapped_input.Id}")
+	if timestamp_to_hours(thing.created_utc) > 12:
+		logging.info(f":: {mapped_input.InputType} to old {mapped_input.Id} for {user.name}")
 		return None
 
 	entity = repository.create_if_not_exist(mapped_input)
@@ -110,7 +111,7 @@ def handle_comment(comment: Comment, user: Redditor, repository: DataRepository,
 	sub = instance.submission(id=sub_id)
 
 	if sub.num_comments > int(os.environ["MaxComments"]):
-		logging.info(f":: Submission for Comment Has To Many Replies {comment.submission.num_comments}")
+		logging.info(f":: Submission for Comment Has To Many Replies {comment.submission.num_comments} for {user.name}")
 		return None
 
 	comment_created_hours = timestamp_to_hours(comment.created_utc)
@@ -122,7 +123,7 @@ def handle_comment(comment: Comment, user: Redditor, repository: DataRepository,
 	max_comment_submission_diff = int(os.environ["MaxCommentSubmissionTimeDifference"])
 
 	if delta > int(os.environ["MaxCommentSubmissionTimeDifference"]):
-		logging.info(f":: Time between comment and reply is {delta} > {max_comment_submission_diff} hours...Skipping")
+		logging.info(f":: Time between comment and reply is {delta} > {max_comment_submission_diff} hours for {user.name}|{comment.id}...Skipping")
 		return None
 
 	if comment.submission.locked:

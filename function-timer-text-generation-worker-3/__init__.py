@@ -12,7 +12,7 @@ from shared_code.services.reply_service import ReplyService
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 
 
-def main(genTimer: func.TimerRequest, responseMessage: func.Out[str]) -> None:
+async def main(genTimer: func.TimerRequest, responseMessage: func.Out[str]) -> None:
 	logging.debug(f":: Text Generation Timer Trigger Called")
 
 	reply_service: ReplyService = ReplyService()

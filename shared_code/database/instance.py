@@ -36,7 +36,7 @@ class TableRecord(Base):
 	def as_dict(self):
 		return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
-engine = create_engine('sqlite:///shared_code/database/bot-db.sqlite3', echo=True)
+engine = create_engine('sqlite:///shared_code/database/bot-db.sqlite3?check_same_thread=False', echo=False)
 
 Base.metadata.create_all(engine)
 

@@ -1,3 +1,4 @@
+import logging
 import os
 
 from sqlalchemy import select, create_engine
@@ -13,10 +14,13 @@ class DataRepository:
 		self._password = os.environ['PsqlPassword']
 
 	def create_entry(self, record: TableRecord):
-		session = Session(engine)
-		session.add(record)
-		session.commit()
-		session.close()
+		try:
+			session = Session(engine)
+			session.add(record)
+			session.commit()
+			session.close()
+		except Exception as e:
+			logging.info(f":: {e}")
 
 	def create_if_not_exist(self, record) -> TableRecord:
 		session = Session(engine)
