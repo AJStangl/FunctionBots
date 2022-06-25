@@ -8,9 +8,14 @@ import random
 
 from shared_code.models.bot_configuration import BotConfigurationManager, BotConfiguration
 
+"""
+Input: Timer
+Output: poll-queue
+Queue Message: Bot Configuration 
+"""
+async def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> None:
 
-def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> None:
-	logging.info(f':: Starting Bot Organization')
+	logging.info(f':: Starting Bot Function Timer')
 
 	manager = BotConfigurationManager()
 
@@ -29,8 +34,10 @@ def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) 
 
 		messages.append(json.dumps(message))
 
+	logging.info(f":: Randomizing the BOIS")
 	random.shuffle(messages)
 
+	logging.info(f":: Sending the bois to the front lines!")
 	msg.set(messages)
 
 	return None

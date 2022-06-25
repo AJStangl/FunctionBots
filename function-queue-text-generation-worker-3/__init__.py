@@ -8,7 +8,7 @@ from shared_code.generators.text.model_text_generator import ModelTextGenerator
 from shared_code.services.text_generation import TextGenerationService
 
 
-def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> None:
+async def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> None:
 	logging.debug(f":: Text Generation Timer Trigger Called")
 	model_generator: ModelTextGenerator = ModelTextGenerator()
 	repository: DataRepository = DataRepository()

@@ -2,7 +2,8 @@ import json
 import logging
 from datetime import datetime
 
-from shared_code.database.instance import TableRecord, TableHelper
+from shared_code.database.instance import TableRecord
+from shared_code.helpers.record_helper import TableHelper
 from shared_code.database.repository import DataRepository
 from shared_code.generators.text.model_text_generator import ModelTextGenerator
 

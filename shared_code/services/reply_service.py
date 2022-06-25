@@ -5,7 +5,8 @@ from azure.storage.queue import QueueServiceClient, QueueClient, QueueMessage
 from praw import Reddit
 from praw.models import Submission, Comment
 
-from shared_code.database.instance import TableHelper, TableRecord
+from shared_code.database.instance import TableRecord
+from shared_code.helpers.record_helper import TableHelper
 from shared_code.database.repository import DataRepository
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.helpers.tagging import TaggingMixin

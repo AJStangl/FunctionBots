@@ -12,8 +12,9 @@ from praw.reddit import Redditor, Reddit, Comment
 
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.database.repository import DataRepository
-from shared_code.database.instance import TableRecord, TableHelper
+from shared_code.database.instance import TableRecord
 from shared_code.helpers.reply_logic import ReplyLogic
+from shared_code.helpers.record_helper import TableHelper
 from shared_code.helpers.tagging import TaggingMixin
 from shared_code.models.bot_configuration import BotConfiguration, BotConfigurationManager
 import datetime
@@ -21,8 +22,13 @@ import datetime
 from shared_code.services.reply_service import ReplyService
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 
+"""
+Main Function For Bot
 
+Input: poll-queue
+"""
 def main(message: func.QueueMessage) -> None:
+
 	submission_workers = ["worker-1"]
 
 	comment_workers = ["worker-2", "worker-3"]
@@ -43,6 +49,8 @@ def main(message: func.QueueMessage) -> None:
 
 	bot_name = incoming_message.Name
 
+	logging.info(f":: Starting Main Routine For {bot_name}")
+
 	reddit = reddit_helper.get_praw_instance_for_bot(bot_name)
 
 	reply_service: ReplyService = ReplyService(reddit)
@@ -61,14 +69,17 @@ def main(message: func.QueueMessage) -> None:
 
 	comments: [Comment] = subreddit.stream.comments(pause_after=0, skip_existing=False)
 
-	loop_interval = get_loop_interval(60)
+	# loop_interval = get_loop_interval(120)
 
+	new_inputs = []
+	logging.info(f":: Starting poll for submissions and comments")
 	for reddit_thing in chain_listing_generators(submissions, comments):
 		handled = handle(reddit_thing, user, repository, reddit_helper, reply_logic)
-		if check_loop_interval(loop_interval):
-			break
+		new_inputs.append(handled)
+		# if check_loop_interval(loop_interval):
+		# 	break
 
-	logging.info(f":: Polling Complete - Starting Processing")
+	logging.info(f":: Polling Complete. {len(new_inputs)} have been found - Starting Processing")
 
 	pending_comments = repository.search_for_pending("Comment", bot_name)
 
@@ -87,22 +98,20 @@ def main(message: func.QueueMessage) -> None:
 		if record.InputType == "Submission":
 			repository.update_entity(record)
 			queue = queue_proxy.service.get_queue_client(random.choice(submission_workers), message_encode_policy=TextBase64EncodePolicy())
-			queue.send_message(json.dumps(record.as_dict()))
-			logging.info(
-				f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
+			queue.send_message(json.dumps(record.as_dict()), time_to_live=60*60*8)
+			logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
 
 		if record.InputType == "Comment":
 			if bot_config_manager.get_configuration_by_name(record.Author) is None:
-				queue = queue_proxy.service.get_queue_client(random.choice(submission_workers))
-				queue.send_message(json.dumps(record.as_dict()), message_encode_policy=TextBase64EncodePolicy())
+				queue = queue_proxy.service.get_queue_client(random.choice(submission_workers), message_encode_policy=TextBase64EncodePolicy())
+				queue.send_message(json.dumps(record.as_dict()), time_to_live=60*60*8)
 				repository.update_entity(record)
-				logging.info(
-					f":: Sending Priority {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
+				logging.info(f":: Sending Priority {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
 				continue
 
 			if record.ReplyProbability > 60:
 				queue = queue_proxy.service.get_queue_client(random.choice(comment_workers), message_encode_policy=TextBase64EncodePolicy())
-				queue.send_message(json.dumps(record.as_dict()))
+				queue.send_message(json.dumps(record.as_dict()), time_to_live=60*60*8)
 				repository.update_entity(record)
 				logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
 				continue
@@ -110,7 +119,6 @@ def main(message: func.QueueMessage) -> None:
 				record.Status = 2
 				repository.update_entity(record)
 				continue
-
 
 def get_loop_interval(seconds: int) -> datetime:
 	return datetime.datetime.now() + datetime.timedelta(seconds=seconds)
@@ -201,18 +209,18 @@ def handle_comment(comment: Comment, user: Redditor, repository: DataRepository,
 		logging.debug(f":: Submission for Comment Has To Many Replies {comment.submission.num_comments} for {user.name}")
 		return None
 
-	comment_created_hours = timestamp_to_hours(comment.created_utc)
+	# comment_created_hours = timestamp_to_hours(comment.created_utc)
 
-	submission_created_hours = timestamp_to_hours(sub.created_utc)
+	# submission_created_hours = timestamp_to_hours(sub.created_utc)
 
-	delta = abs(comment_created_hours - submission_created_hours)
+	# delta = abs(comment_created_hours - submission_created_hours)
 
-	max_comment_submission_diff = int(os.environ["MaxCommentSubmissionTimeDifference"])
+	# max_comment_submission_diff = int(os.environ["MaxCommentSubmissionTimeDifference"])
 
-	if delta > int(os.environ["MaxCommentSubmissionTimeDifference"]):
-		logging.debug(
-			f":: Time between comment and reply is {delta} > {max_comment_submission_diff} hours for {user.name}|{comment.id}")
-		return None
+	# if delta > int(os.environ["MaxCommentSubmissionTimeDifference"]):
+	# 	logging.debug(
+	# 		f":: Time between comment and reply is {delta} > {max_comment_submission_diff} hours for {user.name}|{comment.id}")
+	# 	return None
 
 	if comment.submission.locked:
 		logging.debug(f":: Comment is locked! Skipping...")

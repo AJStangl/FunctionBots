@@ -1,7 +1,7 @@
 import logging
 import os
 
-from sqlalchemy import select, create_engine
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from shared_code.database.instance import engine, TableRecord
@@ -39,7 +39,6 @@ class DataRepository:
 		try:
 			entity = session.execute(
 				select(TableRecord)
-					.where(TableRecord.TextGenerationPrompt == "")
 					.where(TableRecord.Status == 0)
 					.where(TableRecord.InputType == input_type)
 					.where(TableRecord.RespondingBot == bot_name)
