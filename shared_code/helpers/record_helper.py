@@ -1,4 +1,5 @@
 import base64
+import datetime
 import json
 import azure.functions as func
 from shared_code.database.instance import TableRecord
@@ -23,6 +24,8 @@ class TableHelper:
 		record.HasResponded = False
 		record.Status = 0
 		record.ReplyProbability = reply_probability
+		record.DateTimeCreated = datetime.datetime.now()
+		record.DateTimeSubmitted = None
 		return record
 
 	@staticmethod

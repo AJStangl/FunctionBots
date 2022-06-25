@@ -1,6 +1,7 @@
 import os
 
 import psycopg2
+from sqlalchemy import DateTime
 from sqlalchemy import Boolean
 from sqlalchemy import Column
 from sqlalchemy import Integer
@@ -18,6 +19,8 @@ Base = declarative_base()
 class TableRecord(Base):
 	__tablename__ = "BotTracking"
 	Id = Column(String, primary_key=True)
+	DateTimeCreated = Column(DateTime)
+	DateTimeSubmitted = Column(DateTime)
 	RedditId = Column(String)
 	Subreddit = Column(String)
 	InputType = Column(String)

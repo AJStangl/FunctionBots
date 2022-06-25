@@ -1,3 +1,4 @@
+import datetime
 import logging
 
 from azure.core.paging import ItemPaged
@@ -67,6 +68,7 @@ class ReplyService:
 					logging.info(f"Response has negative keyword - {item}")
 					entity.HasResponded = True
 					entity.Status = 3
+					entity.DateTimeSubmitted = datetime.datetime.now()
 					self.repository.update_entity(entity)
 
 			if entity.InputType == "Submission":
@@ -75,6 +77,7 @@ class ReplyService:
 				sub_instance.reply(extract['body'])
 				entity.HasResponded = True
 				entity.Status = 4
+				entity.DateTimeSubmitted = datetime.datetime.now()
 				entity.TextGenerationResponse = extract['body']
 				self.repository.update_entity(entity)
 
@@ -84,5 +87,6 @@ class ReplyService:
 				comment_instance.reply(extract['body'])
 				entity.HasResponded = True
 				entity.Status = 4
+				entity.DateTimeSubmitted = datetime.datetime.now()
 				entity.TextGenerationResponse = extract['body']
 				self.repository.update_entity(entity)
