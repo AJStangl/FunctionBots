@@ -5,9 +5,8 @@
       "name": "initializingTimer",
       "type": "timerTrigger",
       "direction": "in",
-      "schedule": "0/59 * * * * *",
-      "useMonitor": true,
-      "runOnStartup": true
+      "schedule": "0 0/2 * * * *",
+      "useMonitor": true
     },
     {
       "type": "queue",

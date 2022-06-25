@@ -112,7 +112,7 @@ def main(message: func.QueueMessage) -> None:
 		processed = process_input(record, reddit, tagging_mixin)
 		record.TextGenerationPrompt = processed
 
-		if record.InputType == "Submission":
+		if record.InputType == "Submission" or record.ReplyProbability == 100:
 			repository.update_entity(record)
 			queue = queue_proxy.service.get_queue_client(random.choice(all_workers), message_encode_policy=TextBase64EncodePolicy())
 			queue.send_message(json.dumps(record.as_dict()))
