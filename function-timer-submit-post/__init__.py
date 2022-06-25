@@ -8,7 +8,7 @@ from shared_code.helpers.tagging import TaggingMixin
 from shared_code.models.bot_configuration import BotConfigurationManager
 from shared_code.helpers.image_scrapper import ImageScrapper
 
-def main(submissionTimer: func.TimerRequest) -> None:
+async def main(submissionTimer: func.TimerRequest) -> None:
 	logging.info(f":: Submission Trigger Called at {time.time()}")
 	manager = BotConfigurationManager()
 	generator = ModelTextGenerator()
