@@ -1,19 +1,14 @@
 import logging
-import base64
-import json
-import logging
 
-import azure.functions as func
 from azure.core.paging import ItemPaged
-from azure.data.tables import TableClient, TableEntity, TableServiceClient
 from azure.storage.queue import QueueServiceClient, QueueClient, QueueMessage
 from praw import Reddit
 from praw.models import Submission, Comment
 
+from shared_code.database.instance import TableHelper, TableRecord
+from shared_code.database.repository import DataRepository
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.helpers.tagging import TaggingMixin
-from shared_code.database.repository import DataRepository
-from shared_code.database.table_model import TableHelper, TableRecord
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 
 

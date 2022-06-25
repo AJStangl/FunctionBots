@@ -10,7 +10,7 @@ from shared_code.models.bot_configuration import BotConfigurationManager, BotCon
 
 
 def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[str]]) -> None:
-	logging.debug(f':: Starting Main Process')
+	logging.info(f':: Starting Bot Organization')
 
 	manager = BotConfigurationManager()
 

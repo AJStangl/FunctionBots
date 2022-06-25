@@ -3,37 +3,36 @@ import logging
 from datetime import datetime
 
 import azure.functions as func
-from azure.storage.queue import QueueServiceClient, QueueClient, QueueMessage
+from azure.storage.queue import QueueServiceClient
 
+from shared_code.database.instance import TableRecord, TableHelper
 from shared_code.database.repository import DataRepository
-from shared_code.database.table_model import TableRecord, TableHelper
 from shared_code.generators.text.model_text_generator import ModelTextGenerator
 from shared_code.services.reply_service import ReplyService
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 
 
-async def main(genTimer: func.TimerRequest, responseMessage: func.Out[str]) -> None:
-
-	logging.debug(f":: Text Generation Timer Trigger Called")
+def main(message: func.QueueMessage) -> None:
+	logging.info(f":: Text Generation Timer Trigger Called")
 
 	reply_service: ReplyService = ReplyService()
 
-	queue_service: QueueServiceClient = QueueServiceProxy().service
+	# queue_service: QueueServiceClient = QueueServiceProxy().service
 
 	repository: DataRepository = DataRepository()
 
-	queue_client: QueueClient = queue_service.get_queue_client("worker-1")
+	# queue_client: QueueClient = queue_service.get_queue_client("worker-1")
 
-	if len(queue_client.peek_messages()) == 0:
-		logging.debug(":: No New Messages")
-		return
+	# if len(queue_client.peek_messages()) == 0:
+	# 	logging.debug(":: No New Messages")
+	# 	return
+	#
+	# message: QueueMessage = queue_client.receive_message()
 
-	message: QueueMessage = queue_client.receive_message()
+	# if message.dequeue_count > 3:
+	# 	queue_client.delete_message(message)
 
-	if message.dequeue_count > 3:
-		queue_client.delete_message(message)
-
-	incoming_message: TableRecord = TableHelper.handle_incoming_message(message)
+	incoming_message: TableRecord = TableHelper.handle_fucking_bullshit(message)
 
 	bot_name = incoming_message["RespondingBot"]
 
@@ -53,8 +52,8 @@ async def main(genTimer: func.TimerRequest, responseMessage: func.Out[str]) -> N
 
 	repository.update_entity(entity)
 
-	queue_client.delete_message(message)
+	# queue_client.delete_message(message)
 
-	responseMessage.set(json.dumps(entity.as_dict()))
+	# responseMessage.set(json.dumps(entity.as_dict()))
 
 	reply_service.invoke()

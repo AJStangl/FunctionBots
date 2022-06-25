@@ -6,6 +6,9 @@
   },
   "extensions": {
     "queues": {
+      "batchSize": 2,
+      "newBatchThreshold": 0,
+      "maxPollingInterval": "00:00:30"
     },
     "tables": {},
     "http": {

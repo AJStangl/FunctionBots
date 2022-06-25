@@ -54,7 +54,6 @@ def main(message: func.QueueMessage) -> None:
 			continue
 
 		choice = random.randint(1, 100)
-		# choice = 40
 		if choice > 30:
 			queue = queue_proxy.service.get_queue_client(random.choice(comment_workers))
 			queue.send_message(json.dumps(record.as_dict()))

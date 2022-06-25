@@ -17,7 +17,7 @@ class QueueServiceProxy(object):
 		self.account_key: str = self.config.account_key
 		self.connection_string: str = self.config.connection_string
 		self.is_emulated: bool = self.config.is_emulated
-		self.service: QueueServiceClient = QueueServiceClient.from_connection_string(self.connection_string)
+		self.service: QueueServiceClient = QueueServiceClient.from_connection_string(self.connection_string, encode_policy=TextBase64EncodePolicy())
 
 	def put_message(self, queue_name: str, content) -> azure.storage.queue.QueueMessage:
 		return self.service.put_message(queue_name, content=content)

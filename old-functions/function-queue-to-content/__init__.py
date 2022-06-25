@@ -10,13 +10,11 @@ from praw.reddit import Redditor, Reddit, Comment
 
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.database.repository import DataRepository
-from shared_code.database.table_model import TableRecord, TableHelper
+from shared_code.database.instance import TableRecord, TableHelper
 from shared_code.models.bot_configuration import BotConfiguration
 import datetime
 
-def main(message: func.QueueMessage, msg: func.Out[str]) -> None:
-
-	logging.info(f":: Trigger For Polling Comment/Submission called at {datetime.date.today()}")
+def main(message: func.QueueMessage) -> None:
 
 	reddit_helper: RedditManager = RedditManager()
 
@@ -24,10 +22,7 @@ def main(message: func.QueueMessage, msg: func.Out[str]) -> None:
 
 	message_json = message.get_body().decode('utf-8')
 
-	logging.info(f":: Sending {message_json} to next queue")
-	msg.set(message_json)
-
-	incoming_message: BotConfiguration = json.loads(message_json, object_hook=lambda d: BotConfiguration(**d))
+	incoming_message: BotConfiguration = json.loads(json.dumps(message_json),object_hook=lambda d: BotConfiguration(**d))
 
 	bot_name = incoming_message.Name
 
@@ -35,35 +30,20 @@ def main(message: func.QueueMessage, msg: func.Out[str]) -> None:
 
 	user = reddit.user.me()
 
-	logging.info(f":: Polling For Submissions for User: {user.name}")
-
 	subs = reddit_helper.get_subs_from_configuration(bot_name)
 
 	subreddit = reddit.subreddit(subs)
 
-	submissions = subreddit.stream.submissions(pause_after=0, skip_existing=False)
-	for submission in submissions:
-		if submission is None:
-			break
+	submissions: [Submission] = subreddit.stream.submissions(pause_after=0)
 
-		max_comments = int(os.environ["MaxComments"])
-		if submission.num_comments > int(max_comments):
-			logging.info(f":: Submission Has More Than {max_comments} replies, skipping")
-			continue
+	comments: [Comment] = subreddit.stream.comments(pause_after=0)
 
-		if submission.locked:
-			logging.info(f":: The Submission is locked. Skipping")
-			continue
+	for elem in chain_listing_generators(submissions, comments):
+		if isinstance(elem, Submission):
+			handle_submission(elem, user, repository)
+		if isinstance(elem, Comment):
+			handle_comment(elem, user, repository, reddit_helper)
 
-		handle_submission(submission, user, repository)
-
-	comments = subreddit.stream.comments(pause_after=0, skip_existing=False)
-	for comment in comments:
-		if comment is None:
-			break
-		handle_comment(comment, user, repository, reddit_helper)
-
-	return None
 
 
 
@@ -73,6 +53,7 @@ def handle_submission(thing: Submission, user: Redditor, repository: DataReposit
 		reddit_id=thing.id,
 		sub_reddit=thing.subreddit.display_name,
 		input_type="Submission",
+		time_in_hours=timestamp_to_hours(thing.created),
 		submitted_date=thing.created,
 		author=getattr(thing.author, 'name', ''),
 		responding_bot=user.name
@@ -98,7 +79,8 @@ def handle_comment(comment: Comment, user: Redditor, repository: DataRepository,
 		input_type="Comment",
 		submitted_date=comment.created,
 		author=getattr(comment.author, 'name', ''),
-		responding_bot=user.name
+		responding_bot=user.name,
+		time_in_hours=timestamp_to_hours(comment.created)
 	)
 
 	if mapped_input.RespondingBot == mapped_input.Author:
@@ -123,7 +105,8 @@ def handle_comment(comment: Comment, user: Redditor, repository: DataRepository,
 	max_comment_submission_diff = int(os.environ["MaxCommentSubmissionTimeDifference"])
 
 	if delta > int(os.environ["MaxCommentSubmissionTimeDifference"]):
-		logging.info(f":: Time between comment and reply is {delta} > {max_comment_submission_diff} hours for {user.name}|{comment.id}...Skipping")
+		logging.info(
+			f":: Time between comment and reply is {delta} > {max_comment_submission_diff} hours for {user.name}|{comment.id}")
 		return None
 
 	if comment.submission.locked:
@@ -135,4 +118,15 @@ def handle_comment(comment: Comment, user: Redditor, repository: DataRepository,
 
 
 def timestamp_to_hours(utc_timestamp):
-	return (datetime.datetime.utcnow() - datetime.datetime.fromtimestamp(utc_timestamp)).total_seconds() / 3600
+	return int((datetime.datetime.utcnow() - datetime.datetime.fromtimestamp(utc_timestamp)).total_seconds() / 3600)
+
+
+def chain_listing_generators(*iterables):
+	# Special tool for chaining PRAW's listing generators
+	# It joins the three iterables together so that we can DRY
+	for it in iterables:
+		for element in it:
+			if element is None:
+				break
+			else:
+				yield element

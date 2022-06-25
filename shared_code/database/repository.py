@@ -4,8 +4,7 @@ import os
 from sqlalchemy import select, create_engine
 from sqlalchemy.orm import Session
 
-from shared_code.database.instance import engine
-from shared_code.database.table_model import TableRecord
+from shared_code.database.instance import engine, TableRecord
 
 
 class DataRepository:
@@ -14,36 +13,41 @@ class DataRepository:
 		self._password = os.environ['PsqlPassword']
 
 	def create_entry(self, record: TableRecord):
+		session = Session(engine)
 		try:
-			session = Session(engine)
 			session.add(record)
 			session.commit()
-			session.close()
 		except Exception as e:
 			logging.info(f":: {e}")
+		finally:
+			session.close()
 
 	def create_if_not_exist(self, record) -> TableRecord:
 		session = Session(engine)
-		entity = session.get(TableRecord, record.Id)
-		if entity:
+		try:
+			entity = session.get(TableRecord, record.Id)
+			if entity:
+				return entity
+			else:
+				self.create_entry(record)
+				return record
+		finally:
 			session.close()
-			return entity
-
-		else:
-			self.create_entry(record)
-			return record
 
 	def search_for_pending(self, input_type: str, bot_name: str):
 		session = Session(engine)
-		entity = session.execute(
-			select(TableRecord)
-				.where(TableRecord.TextGenerationPrompt == "")
-				.where(TableRecord.Status == 0)
-				.where(TableRecord.InputType == input_type)
-				.order_by(TableRecord.ContentDateSubmitted))\
-			.all()
-		session.close()
-		return entity
+		try:
+			entity = session.execute(
+				select(TableRecord)
+					.where(TableRecord.TextGenerationPrompt == "")
+					.where(TableRecord.Status == 0)
+					.where(TableRecord.InputType == input_type)
+					.where(TableRecord.RespondingBot == bot_name)
+					.order_by(TableRecord.TimeInHours))\
+				.all()
+			return entity
+		finally:
+			session.close()
 
 	def update_entity(self, entity):
 		session = Session(engine)
@@ -56,6 +60,8 @@ class DataRepository:
 
 	def get_entity_by_id(self, Id: str) -> TableRecord:
 		session = Session(engine)
-		entity = session.get(TableRecord, Id)
-		session.close()
-		return entity
+		try:
+			entity = session.get(TableRecord, Id)
+			return entity
+		finally:
+			session.close()
