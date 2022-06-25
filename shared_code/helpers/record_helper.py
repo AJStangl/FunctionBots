@@ -24,7 +24,7 @@ class TableHelper:
 		record.HasResponded = False
 		record.Status = 0
 		record.ReplyProbability = reply_probability
-		record.DateTimeCreated = datetime.datetime.now()
+		record.DateTimeCreated = str(datetime.datetime.now())
 		record.DateTimeSubmitted = None
 		return record
 

@@ -60,33 +60,42 @@ class ReplyService:
 
 			entity: TableRecord = self.repository.get_entity_by_id(record["Id"])
 
-			if not extract['body']:
-				logging.info(f":: No Body Present for {record.PartitionKey}")
+			body = None
+			try:
+				body = extract['body']
+			except Exception as e:
+				pass
+
+			if record is None:
+				return
+
+			if not body:
+				logging.info(f":: No Body Present for {record['Id']}")
 
 			for item in self.bad_key_words:
-				if extract['body'] in item:
+				if body in item:
 					logging.info(f"Response has negative keyword - {item}")
 					entity.HasResponded = True
 					entity.Status = 3
-					entity.DateTimeSubmitted = datetime.datetime.now()
+					entity.DateTimeSubmitted = str(datetime.datetime.now())
 					self.repository.update_entity(entity)
 
 			if entity.InputType == "Submission":
 				sub_instance: Submission = reddit.submission(id=entity.RedditId)
 				logging.info(f":: Sending Out Reply To Submission - {entity.RedditId}")
-				sub_instance.reply(extract['body'])
+				sub_instance.reply(body)
 				entity.HasResponded = True
 				entity.Status = 4
-				entity.DateTimeSubmitted = datetime.datetime.now()
-				entity.TextGenerationResponse = extract['body']
+				entity.DateTimeSubmitted = str(datetime.datetime.now())
+				entity.TextGenerationResponse = body
 				self.repository.update_entity(entity)
 
 			if entity.InputType == "Comment":
 				logging.info(f":: Sending Out Reply To Comment - {entity.RedditId}")
 				comment_instance: Comment = reddit.comment(id=entity.RedditId)
-				comment_instance.reply(extract['body'])
+				comment_instance.reply(body)
 				entity.HasResponded = True
 				entity.Status = 4
-				entity.DateTimeSubmitted = datetime.datetime.now()
-				entity.TextGenerationResponse = extract['body']
+				entity.DateTimeSubmitted = str(datetime.datetime.now())
+				entity.TextGenerationResponse = body
 				self.repository.update_entity(entity)

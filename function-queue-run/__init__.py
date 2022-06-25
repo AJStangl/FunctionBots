@@ -59,20 +59,22 @@ def main(message: func.QueueMessage) -> None:
 
 	reply_logic: ReplyLogic = ReplyLogic(reddit)
 
-	reply_service.invoke()
-
 	user = reddit.user.me()
 
 	subs = reddit_helper.get_subs_from_configuration(bot_name)
 
 	subreddit = reddit.subreddit(subs)
 
+	logging.info(f":: Initializing Reply Before Main Routine")
+	reply_service.invoke()
+
+	logging.info(f":: Collecting Submissions for {bot_name}")
 	submissions: [Submission] = subreddit.stream.submissions(pause_after=0, skip_existing=False)
 
+	logging.info(f":: Collecting Comments for {bot_name}")
 	comments: [Comment] = subreddit.stream.comments(pause_after=0, skip_existing=False)
 
 	new_inputs = []
-
 	for reddit_thing in submissions:
 		if reddit_thing is None:
 			break
@@ -88,7 +90,6 @@ def main(message: func.QueueMessage) -> None:
 			new_inputs.append(handled)
 
 	logging.info(f":: Polling Complete. {len(new_inputs)} have been found - Starting Processing")
-	reply_service.invoke()
 
 	pending_comments = repository.search_for_pending("Comment", bot_name)
 
@@ -125,8 +126,11 @@ def main(message: func.QueueMessage) -> None:
 			repository.update_entity(record)
 			continue
 
+	logging.info(f":: Initializing Reply After Main Routine")
 	reply_service.invoke()
+
 	logging.info(f":: Polling Method Complete For {bot_name}")
+	return None
 
 
 def process_input(record: TableRecord, instance: Reddit, tagging_mixin: TaggingMixin) -> Optional[str]:

@@ -42,6 +42,7 @@ class DataRepository:
 					.where(TableRecord.Status == 0)
 					.where(TableRecord.InputType == input_type)
 					.where(TableRecord.RespondingBot == bot_name)
+					.limit(10)
 					.order_by(TableRecord.TimeInHours))\
 				.all()
 			return entity

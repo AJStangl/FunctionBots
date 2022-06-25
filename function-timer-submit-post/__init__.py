@@ -24,9 +24,10 @@ def main(submissionTimer: func.TimerRequest) -> None:
 			logging.info(f":: Starting Submission For {bot.Name} to {sub}")
 			target_sub = sub
 			prompt = tagging.get_random_new_submission_tag(subreddit=sub)
-			result = generator.generate_text(bot.Name, prompt, False)
+			result = generator.generate_text(bot.Name, prompt, True)
 			extracted_prompt = tagging.extract_submission_from_generated_text(result)
 			instance = reddit_helper.get_praw_instance_for_bot(bot.Name)
+			latest_sub = next(instance.user.me.submissions.new())
 
 			logging.debug(f":: Submitting Post to {target_sub} for {bot.Name}")
 
