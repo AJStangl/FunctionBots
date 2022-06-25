@@ -28,7 +28,7 @@ Input: poll-queue
 """
 
 
-async def main(message: func.QueueMessage) -> None:
+def main(message: func.QueueMessage) -> None:
 	submission_workers = ["worker-1"]
 
 	comment_workers = ["worker-2", "worker-3"]

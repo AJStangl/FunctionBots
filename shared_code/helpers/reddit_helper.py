@@ -16,5 +16,5 @@ class RedditManager:
 	@staticmethod
 	def get_praw_instance_for_bot(bot_name: str) -> Reddit:
 		logging.debug(f":: Initializing Reddit Praw Instance for {bot_name}")
-		reddit = Reddit(site_name=bot_name, check_for_async=False)
+		reddit = Reddit(site_name=bot_name)
 		return reddit
