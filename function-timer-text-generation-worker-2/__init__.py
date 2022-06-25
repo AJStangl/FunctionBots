@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime
 
@@ -6,28 +7,13 @@ import azure.functions as func
 from shared_code.database.instance import TableRecord, TableHelper
 from shared_code.database.repository import DataRepository
 from shared_code.generators.text.model_text_generator import ModelTextGenerator
-from shared_code.services.reply_service import ReplyService
 
 
-def main(message: func.QueueMessage) -> None:
+def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> None:
+
 	logging.debug(f":: Text Generation Timer Trigger Called")
 
-	reply_service: ReplyService = ReplyService()
-
-	# queue_service: QueueServiceClient = QueueServiceProxy().service
-
 	repository: DataRepository = DataRepository()
-
-	# queue_client: QueueClient = queue_service.get_queue_client("worker-2")
-
-	# if len(queue_client.peek_messages()) == 0:
-	# 	logging.debug(":: No New Messages")
-	# 	return
-
-	# message: QueueMessage = queue_client.receive_message()
-
-	# if message.dequeue_count > 3:
-	# 	queue_client.delete_message(message)
 
 	incoming_message: TableRecord = TableHelper.handle_fucking_bullshit(message)
 
@@ -49,8 +35,4 @@ def main(message: func.QueueMessage) -> None:
 
 	repository.update_entity(entity)
 
-	# queue_client.delete_message(message)
-
-	# responseMessage.set(json.dumps(entity.as_dict()))
-
-	reply_service.invoke()
+	responseMessage.set(json.dumps(entity.as_dict()))

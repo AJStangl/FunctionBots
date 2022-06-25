@@ -7,6 +7,13 @@
       "direction": "in",
       "queueName": "worker-3",
       "connection": "AzureWebJobsStorage"
+    },
+    {
+      "type": "queue",
+      "direction": "out",
+      "name": "responseMessage",
+      "queueName": "reply-queue",
+      "connection": "AzureWebJobsStorage"
     }
   ]
 }

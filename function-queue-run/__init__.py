@@ -18,6 +18,7 @@ from shared_code.helpers.tagging import TaggingMixin
 from shared_code.models.bot_configuration import BotConfiguration, BotConfigurationManager
 import datetime
 
+from shared_code.services.reply_service import ReplyService
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 
 
@@ -44,7 +45,11 @@ def main(message: func.QueueMessage) -> None:
 
 	reddit = reddit_helper.get_praw_instance_for_bot(bot_name)
 
+	reply_service: ReplyService = ReplyService(reddit)
+
 	reply_logic: ReplyLogic = ReplyLogic(reddit)
+
+	reply_service.invoke()
 
 	user = reddit.user.me()
 
