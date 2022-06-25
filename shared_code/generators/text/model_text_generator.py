@@ -1,8 +1,10 @@
 import logging
 import os
 import time
+
 from simpletransformers.language_generation import LanguageGenerationModel
-from shared_code.models.bot_configuration import BotConfigurationManager, BotConfiguration
+
+from shared_code.models.bot_configuration import BotConfigurationManager
 
 
 class ModelTextGenerator(object):
@@ -49,6 +51,7 @@ class ModelTextGenerator(object):
 		processes = torch.cuda.list_gpu_processes()
 		matched_process = re.findall("\s+(\d+)\s\D+", processes)
 		if len(matched_process) != 0:
-			kill_process = matched_process[0]
-			logging.info(f":: Killing CUDA Task with PID: {kill_process}")
-			os.system(f"taskkill /F /PID {kill_process}")
+			for proc in matched_process:
+				logging.info(f":: Killing CUDA Task with PID: {proc}")
+				os.system(f"taskkill /F /PID {proc}")
+

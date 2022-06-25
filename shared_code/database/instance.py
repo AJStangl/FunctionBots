@@ -8,10 +8,10 @@ from sqlalchemy import String
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
 
-conn_string = "host='localhost' dbname='redditData' user='postgres' password='guitar!01'"
-conn = psycopg2.connect(conn_string)
 user = os.environ['PsqlUser']
 password = os.environ['PsqlPassword']
+conn_string = f"host='localhost' dbname='redditData' user='{user}' password='{password}'"
+conn = psycopg2.connect(conn_string)
 
 Base = declarative_base()
 

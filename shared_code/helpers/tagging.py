@@ -24,7 +24,7 @@ class TaggingMixin:
 
 	_end_tag = '<|'
 
-	def collate_tagged_comment_history(self, loop_thing: RedditBase, to_level=6, use_reply_sense=True):
+	def collate_tagged_comment_history(self, loop_thing: RedditBase, to_level=12, use_reply_sense=True):
 		"""
 		Loop backwards (upwards in reddit terms) from the praw_thing through the comment up x times,
 		tagging the content text in the same way as the training data is

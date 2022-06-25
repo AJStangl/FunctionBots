@@ -1,24 +1,23 @@
+import datetime
 import json
 import logging
 import os
-import typing
-from typing import Optional
 import random
+from typing import Optional
+
 import azure.functions as func
 from azure.storage.queue import TextBase64EncodePolicy
 from praw.models import Submission
 from praw.models.reddit.base import RedditBase
 from praw.reddit import Redditor, Reddit, Comment
 
-from shared_code.helpers.reddit_helper import RedditManager
-from shared_code.database.repository import DataRepository
 from shared_code.database.instance import TableRecord
-from shared_code.helpers.reply_logic import ReplyLogic
+from shared_code.database.repository import DataRepository
 from shared_code.helpers.record_helper import TableHelper
+from shared_code.helpers.reddit_helper import RedditManager
+from shared_code.helpers.reply_logic import ReplyLogic
 from shared_code.helpers.tagging import TaggingMixin
 from shared_code.models.bot_configuration import BotConfiguration, BotConfigurationManager
-import datetime
-
 from shared_code.services.reply_service import ReplyService
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 
@@ -27,11 +26,14 @@ Main Function For Bot
 
 Input: poll-queue
 """
-def main(message: func.QueueMessage) -> None:
 
+
+def main(message: func.QueueMessage) -> None:
 	submission_workers = ["worker-1"]
 
 	comment_workers = ["worker-2", "worker-3"]
+
+	all_workers = ["worker-1", "worker-2", "worker-3"]
 
 	reddit_helper: RedditManager = RedditManager()
 
@@ -69,15 +71,30 @@ def main(message: func.QueueMessage) -> None:
 
 	comments: [Comment] = subreddit.stream.comments(pause_after=0, skip_existing=False)
 
-	# loop_interval = get_loop_interval(120)
+	loop_interval = get_loop_interval(60)
+
+	# logging.info(f":: Starting poll for submissions and comments")
+	# for reddit_thing in chain_listing_generators(submissions, comments):
+	# 	handled = handle(reddit_thing, user, repository, reddit_helper, reply_logic)
+	# 	if handled is not None:
+	# 		new_inputs.append(handled)
+	# 	if check_loop_interval(loop_interval):
+	# 		break
 
 	new_inputs = []
-	logging.info(f":: Starting poll for submissions and comments")
-	for reddit_thing in chain_listing_generators(submissions, comments):
+	for reddit_thing in submissions:
+		if reddit_thing is None:
+			break
 		handled = handle(reddit_thing, user, repository, reddit_helper, reply_logic)
-		new_inputs.append(handled)
-		# if check_loop_interval(loop_interval):
-		# 	break
+		if handled is not None:
+			new_inputs.append(handled)
+
+	for reddit_thing in comments:
+		if reddit_thing is None:
+			break
+		handled = handle(reddit_thing, user, repository, reddit_helper, reply_logic)
+		if handled is not None:
+			new_inputs.append(handled)
 
 	logging.info(f":: Polling Complete. {len(new_inputs)} have been found - Starting Processing")
 
@@ -97,28 +114,22 @@ def main(message: func.QueueMessage) -> None:
 
 		if record.InputType == "Submission":
 			repository.update_entity(record)
-			queue = queue_proxy.service.get_queue_client(random.choice(submission_workers), message_encode_policy=TextBase64EncodePolicy())
-			queue.send_message(json.dumps(record.as_dict()), time_to_live=60*60*8)
+			queue = queue_proxy.service.get_queue_client(random.choice(all_workers), message_encode_policy=TextBase64EncodePolicy())
+			queue.send_message(json.dumps(record.as_dict()))
 			logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
 
-		if record.InputType == "Comment":
-			if bot_config_manager.get_configuration_by_name(record.Author) is None:
-				queue = queue_proxy.service.get_queue_client(random.choice(submission_workers), message_encode_policy=TextBase64EncodePolicy())
-				queue.send_message(json.dumps(record.as_dict()), time_to_live=60*60*8)
-				repository.update_entity(record)
-				logging.info(f":: Sending Priority {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
-				continue
+		if record.ReplyProbability > 75 and record.InputType == "Comment":
+			queue = queue_proxy.service.get_queue_client(random.choice(all_workers), message_encode_policy=TextBase64EncodePolicy())
+			queue.send_message(json.dumps(record.as_dict()))
+			repository.update_entity(record)
+			logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
+			continue
 
-			if record.ReplyProbability > 60:
-				queue = queue_proxy.service.get_queue_client(random.choice(comment_workers), message_encode_policy=TextBase64EncodePolicy())
-				queue.send_message(json.dumps(record.as_dict()), time_to_live=60*60*8)
-				repository.update_entity(record)
-				logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
-				continue
-			else:
-				record.Status = 2
-				repository.update_entity(record)
-				continue
+		else:
+			logging.info(f":: Ignoring {record.InputType} for {record.RespondingBot} with Probability {record.ReplyProbability}")
+			record.Status = 2
+			repository.update_entity(record)
+			continue
 
 def get_loop_interval(seconds: int) -> datetime:
 	return datetime.datetime.now() + datetime.timedelta(seconds=seconds)
@@ -156,7 +167,6 @@ def handle(thing: RedditBase, user: Redditor, repository: DataRepository, helper
 
 
 def handle_submission(thing: Submission, user: Redditor, repository: DataRepository, reply_probability: ReplyLogic) -> Optional[TableRecord]:
-	# thing, user.name, "Submission"
 	probability = reply_probability.calculate_reply_probability(thing)
 	mapped_input: TableRecord = TableHelper.map_base_to_message(
 		reddit_id=thing.id,
@@ -182,8 +192,7 @@ def handle_submission(thing: Submission, user: Redditor, repository: DataReposit
 	return entity
 
 
-def handle_comment(comment: Comment, user: Redditor, repository: DataRepository, helper: RedditManager, reply_probability: ReplyLogic) -> Optional[
-	TableRecord]:
+def handle_comment(comment: Comment, user: Redditor, repository: DataRepository, helper: RedditManager, reply_probability: ReplyLogic) -> Optional[TableRecord]:
 	probability = reply_probability.calculate_reply_probability(comment)
 	mapped_input: TableRecord = TableHelper.map_base_to_message(
 		reddit_id=comment.id,
@@ -206,7 +215,8 @@ def handle_comment(comment: Comment, user: Redditor, repository: DataRepository,
 	sub = instance.submission(id=sub_id)
 
 	if sub.num_comments > int(os.environ["MaxComments"]):
-		logging.debug(f":: Submission for Comment Has To Many Replies {comment.submission.num_comments} for {user.name}")
+		logging.debug(
+			f":: Submission for Comment Has To Many Replies {comment.submission.num_comments} for {user.name}")
 		return None
 
 	# comment_created_hours = timestamp_to_hours(comment.created_utc)

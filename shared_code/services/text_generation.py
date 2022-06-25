@@ -15,7 +15,7 @@ class TextGenerationService:
 
 	def invoke(self, message) -> str:
 
-		logging.debug(f":: Text Generation Timer Trigger Called")
+		logging.info(f":: Text Generation Timer Trigger Called")
 
 		incoming_message: TableRecord = TableHelper.handle_fucking_bullshit(message)
 
