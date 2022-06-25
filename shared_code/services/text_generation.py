@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime
 
@@ -11,7 +12,7 @@ class TextGenerationService:
 		self.repository: DataRepository = repository_instance
 		self.model_generator: ModelTextGenerator = model_generator
 
-	def invoke(self, message) -> dict:
+	def invoke(self, message) -> str:
 
 		logging.debug(f":: Text Generation Timer Trigger Called")
 
@@ -19,17 +20,17 @@ class TextGenerationService:
 
 		bot_name = incoming_message["RespondingBot"]
 
-		prompt = incoming_message["TextGenerationPrompt"]
-
-		logging.debug(f":: Trigger For Model Generation called at {datetime.now()} for {bot_name}")
-
-		result = self.model_generator.generate_text(bot_name, prompt)
-
 		entity = self.repository.get_entity_by_id(incoming_message["Id"])
 
 		if entity is None:
 			logging.info(f":: Entity Not Found For Id {incoming_message['Id']}")
 			return
+
+		prompt = incoming_message["TextGenerationPrompt"]
+
+		logging.debug(f":: Trigger For Model Generation called at {datetime.now()} for {bot_name}")
+
+		result = self.model_generator.generate_text(bot_name, prompt)
 
 		entity.TextGenerationPrompt = prompt
 
@@ -37,4 +38,4 @@ class TextGenerationService:
 
 		self.repository.update_entity(entity)
 
-		return entity.as_dict()
+		return json.dumps(entity.as_dict())

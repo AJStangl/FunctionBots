@@ -4,6 +4,7 @@ from datetime import datetime
 import praw
 from praw import Reddit
 from praw.models import Message
+from praw.models.reddit.base import RedditBase
 from praw.reddit import Submission, Comment
 
 
@@ -16,12 +17,12 @@ class ReplyLogic:
 		self._bot_author_reply_boost = .8
 		self._comment_depth_reply_penalty = 0.05
 		self._base_reply_probability = 0
-		self._do_not_reply_bot_usernames = None
+		self._do_not_reply_bot_usernames = []
 		self._message_mention_reply_probability = 1
 		self._praw: Reddit = instance
 		self._own_submission_reply_boost = .8
 
-	def calculate_reply_probability(self, praw_thing):
+	def calculate_reply_probability(self, praw_thing: RedditBase):
 		# Ths function contains all of the logic used for deciding whether to reply
 
 		if not praw_thing.author:
@@ -120,7 +121,7 @@ class ReplyLogic:
 		# calculate rate of decay over x hours
 		rate_of_decay = max(0, 1 - (age_of_submission / 24))
 		# multiply the rate of decay by the reply probability
-		return round(reply_probability * rate_of_decay, 2)
+		return round(reply_probability * rate_of_decay, 2) * 100
 
 	def _find_depth_of_comment(self, praw_comment) -> int:
 		"""

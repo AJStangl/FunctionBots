@@ -14,4 +14,4 @@ def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> None:
 	repository: DataRepository = DataRepository()
 	text_gen_service = TextGenerationService(repository, model_generator)
 	result = text_gen_service.invoke(message)
-	responseMessage.set(json.dumps(result))
+	responseMessage.set(result)

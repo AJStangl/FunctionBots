@@ -51,12 +51,14 @@ class DataRepository:
 
 	def update_entity(self, entity):
 		session = Session(engine)
-		props = entity.as_dict()
-		session.query(TableRecord). \
-			filter(TableRecord.Id == entity.Id). \
-			update(props)
-		session.commit()
-		session.close()
+		try:
+			props = entity.as_dict()
+			session.query(TableRecord). \
+				filter(TableRecord.Id == entity.Id). \
+				update(props)
+			session.commit()
+		finally:
+			session.close()
 
 	def get_entity_by_id(self, Id: str) -> TableRecord:
 		session = Session(engine)

@@ -64,7 +64,7 @@ def main(message: func.QueueMessage) -> None:
 	loop_interval = get_loop_interval(60)
 
 	for reddit_thing in chain_listing_generators(submissions, comments):
-		handled = handle(reddit_thing, user, repository, reddit_helper)
+		handled = handle(reddit_thing, user, repository, reddit_helper, reply_logic)
 		if check_loop_interval(loop_interval):
 			break
 
@@ -100,9 +100,7 @@ def main(message: func.QueueMessage) -> None:
 					f":: Sending Priority {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
 				continue
 
-			# reply_logic.calculate_reply_probability()
-			choice = random.randint(1, 100)
-			if choice < 30:
+			if record.ReplyProbability > 60:
 				queue = queue_proxy.service.get_queue_client(random.choice(comment_workers), message_encode_policy=TextBase64EncodePolicy())
 				queue.send_message(json.dumps(record.as_dict()))
 				repository.update_entity(record)
@@ -140,17 +138,18 @@ def process_input(record: TableRecord, instance: Reddit, tagging_mixin: TaggingM
 		return prompt
 
 
-def handle(thing: RedditBase, user: Redditor, repository: DataRepository, helper: RedditManager):
+def handle(thing: RedditBase, user: Redditor, repository: DataRepository, helper: RedditManager, reply_probability: ReplyLogic) -> Optional[TableRecord]:
 	if isinstance(thing, Submission):
-		handled_submission = handle_submission(thing, user, repository)
+		handled_submission = handle_submission(thing, user, repository, reply_probability)
 		return handled_submission
 	if isinstance(thing, Comment):
-		handled_comment = handle_comment(thing, user, repository, helper)
+		handled_comment = handle_comment(thing, user, repository, helper, reply_probability)
 		return handled_comment
 
 
-def handle_submission(thing: Submission, user: Redditor, repository: DataRepository) -> Optional[TableRecord]:
+def handle_submission(thing: Submission, user: Redditor, repository: DataRepository, reply_probability: ReplyLogic) -> Optional[TableRecord]:
 	# thing, user.name, "Submission"
+	probability = reply_probability.calculate_reply_probability(thing)
 	mapped_input: TableRecord = TableHelper.map_base_to_message(
 		reddit_id=thing.id,
 		sub_reddit=thing.subreddit.display_name,
@@ -158,7 +157,8 @@ def handle_submission(thing: Submission, user: Redditor, repository: DataReposit
 		time_in_hours=timestamp_to_hours(thing.created),
 		submitted_date=thing.created,
 		author=getattr(thing.author, 'name', ''),
-		responding_bot=user.name
+		responding_bot=user.name,
+		reply_probability=probability
 	)
 
 	# Filter Out Where responding bot is the author
@@ -174,8 +174,9 @@ def handle_submission(thing: Submission, user: Redditor, repository: DataReposit
 	return entity
 
 
-def handle_comment(comment: Comment, user: Redditor, repository: DataRepository, helper: RedditManager) -> Optional[
+def handle_comment(comment: Comment, user: Redditor, repository: DataRepository, helper: RedditManager, reply_probability: ReplyLogic) -> Optional[
 	TableRecord]:
+	probability = reply_probability.calculate_reply_probability(comment)
 	mapped_input: TableRecord = TableHelper.map_base_to_message(
 		reddit_id=comment.id,
 		sub_reddit=comment.subreddit.display_name,
@@ -183,7 +184,8 @@ def handle_comment(comment: Comment, user: Redditor, repository: DataRepository,
 		submitted_date=comment.created,
 		author=getattr(comment.author, 'name', ''),
 		responding_bot=user.name,
-		time_in_hours=timestamp_to_hours(comment.created)
+		time_in_hours=timestamp_to_hours(comment.created),
+		reply_probability=probability
 	)
 
 	if mapped_input.RespondingBot == mapped_input.Author:
