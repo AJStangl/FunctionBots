@@ -55,7 +55,7 @@ def main(message: func.QueueMessage) -> None:
 
 	reddit = reddit_helper.get_praw_instance_for_bot(bot_name)
 
-	reply_service: ReplyService = ReplyService(reddit)
+	reply_service: ReplyService = ReplyService()
 
 	reply_logic: ReplyLogic = ReplyLogic(reddit)
 

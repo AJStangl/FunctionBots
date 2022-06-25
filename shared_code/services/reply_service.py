@@ -15,7 +15,7 @@ from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 
 
 class ReplyService:
-	def __init__(self, instance: Reddit):
+	def __init__(self):
 		self.logging = logging.getLogger(__name__)
 		self.bad_key_words = ["removed", "nouniqueideas007"]
 		self.tagging: TaggingMixin = TaggingMixin()
@@ -23,7 +23,6 @@ class ReplyService:
 		self.queue_service: QueueServiceClient = QueueServiceProxy().service
 		self.repository: DataRepository = DataRepository()
 		self.queue_client: QueueClient = self.queue_service.get_queue_client("reply-queue")
-		self.reddit_instance: Reddit = instance
 
 	def invoke(self) -> None:
 		self.logging.info(f":: Initializing Reply Processing")
@@ -43,6 +42,8 @@ class ReplyService:
 		return None
 
 	def handle_messages(self, messages):
+		manager: RedditManager = RedditManager()
+
 		for message in messages:
 			self.logging.info(f":: Handling Messages From Iterator")
 
@@ -56,7 +57,7 @@ class ReplyService:
 
 			extract: dict = self.tagging.extract_reply_from_generated_text(prompt, response)
 
-			reddit: Reddit = self.reddit_instance
+			reddit: Reddit = manager.get_praw_instance_for_bot(record["RespondingBot"])
 
 			entity: TableRecord = self.repository.get_entity_by_id(record["Id"])
 
@@ -64,13 +65,14 @@ class ReplyService:
 			try:
 				body = extract['body']
 			except Exception as e:
-				pass
+				continue
 
 			if record is None:
-				return
+				continue
 
-			if not body:
-				logging.info(f":: No Body Present for {record['Id']}")
+			if body is None:
+				logging.info(f":: No Body Present for message")
+				continue
 
 			for item in self.bad_key_words:
 				if body in item:
