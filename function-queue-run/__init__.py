@@ -91,18 +91,18 @@ def main(message: func.QueueMessage) -> None:
 			repository.update_entity(record)
 			queue = queue_proxy.service.get_queue_client(random.choice(all_workers), message_encode_policy=TextBase64EncodePolicy())
 			queue.send_message(json.dumps(record.as_dict()))
-			logging.debug(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
+			logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
 			continue
 
 		if record.ReplyProbability > reply_probability_target and record.InputType == "Comment":
 			queue = queue_proxy.service.get_queue_client(random.choice(all_workers), message_encode_policy=TextBase64EncodePolicy())
 			queue.send_message(json.dumps(record.as_dict()))
 			repository.update_entity(record)
-			logging.debug(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
+			logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
 			continue
 
 		else:
-			logging.debug(f":: Ignoring {record.InputType} for {record.RespondingBot} has a Probability of {record.ReplyProbability} but needs {reply_probability_target}")
+			logging.info(f":: Ignoring {record.InputType} for {record.RespondingBot} has a Probability of {record.ReplyProbability} but needs {reply_probability_target}")
 			record.Status = 2
 			repository.update_entity(record)
 			continue
@@ -128,11 +128,11 @@ def main(message: func.QueueMessage) -> None:
 	for reddit_thing in comments:
 		if reddit_thing is None:
 			break
-		handled = handle_comment(reddit_thing, user, repository, reddit_helper, reply_logic)
+		handled = handle_comment(reddit_thing, user, repository, reply_logic, reddit)
 		if handled is not None:
 			new_inputs.append(handled)
-
 	####################################################################################################################
+
 	logging.info(f":: Polling Method Complete For {bot_name}")
 	return None
 
@@ -182,13 +182,13 @@ def handle_submission(thing: Submission, user: Redditor, repository: DataReposit
 	return entity
 
 
-def handle_comment(comment: Comment, user: Redditor, repository: DataRepository, helper: RedditManager, reply_probability: ReplyLogic) -> Optional[TableRecord]:
+def handle_comment(comment: Comment, user: Redditor, repository: DataRepository, reply_probability: ReplyLogic, instance: Reddit) -> Optional[TableRecord]:
 	probability = reply_probability.calculate_reply_probability(comment)
 	mapped_input: TableRecord = TableHelper.map_base_to_message(
 		reddit_id=comment.id,
 		sub_reddit=comment.subreddit.display_name,
 		input_type="Comment",
-		submitted_date=comment.created,
+		submitted_date=comment.submission.created,
 		author=getattr(comment.author, 'name', ''),
 		responding_bot=user.name,
 		time_in_hours=timestamp_to_hours(comment.created),
@@ -200,8 +200,6 @@ def handle_comment(comment: Comment, user: Redditor, repository: DataRepository,
 		return None
 
 	sub_id = comment.submission.id
-
-	instance = helper.get_praw_instance_for_bot(user.name)
 
 	sub = instance.submission(id=sub_id)
 

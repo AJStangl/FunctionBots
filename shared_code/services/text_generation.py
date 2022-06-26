@@ -29,8 +29,6 @@ class TextGenerationService:
 
 		prompt = incoming_message["TextGenerationPrompt"]
 
-		logging.debug(f":: Trigger For Model Generation called at {datetime.now()} for {bot_name}")
-
 		result = self.model_generator.generate_text(bot_name, prompt)
 
 		entity.TextGenerationPrompt = prompt
