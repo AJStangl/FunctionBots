@@ -4,11 +4,10 @@ import logging
 import os
 import random
 from typing import Optional
-
+import time
 import azure.functions as func
 from azure.storage.queue import TextBase64EncodePolicy
 from praw.models import Submission
-from praw.models.reddit.base import RedditBase
 from praw.reddit import Redditor, Reddit, Comment
 
 from shared_code.database.instance import TableRecord
@@ -29,11 +28,8 @@ Input: poll-queue
 
 
 def main(message: func.QueueMessage) -> None:
-	submission_workers = ["worker-1"]
-
-	comment_workers = ["worker-2", "worker-3"]
-
-	all_workers = ["worker-1", "worker-2", "worker-3"]
+	all_workers = ["worker-2", "worker-3"]
+	priority_worker = ["worker-1"]
 
 	reddit_helper: RedditManager = RedditManager()
 
@@ -41,7 +37,9 @@ def main(message: func.QueueMessage) -> None:
 
 	queue_proxy: QueueServiceProxy = QueueServiceProxy()
 
-	bot_config_manager = BotConfigurationManager()
+	bot_configuration_manager: BotConfigurationManager = BotConfigurationManager()
+
+	bot_name_list = [bot.Name for bot in bot_configuration_manager.get_configuration()]
 
 	tagging_mixin: TaggingMixin = TaggingMixin()
 
@@ -66,12 +64,16 @@ def main(message: func.QueueMessage) -> None:
 	subreddit = reddit.subreddit(subs)
 
 	logging.info(f":: Initializing Reply Before Main Routine")
+
 	reply_service.invoke()
 
 	####################################################################################################################
 	logging.info(f":: Handling pending comments and submissions from database for {bot_name}")
+
+	logging.info(f":: Fetching latest Comments For {bot_name}")
 	pending_comments = repository.search_for_pending("Comment", bot_name)
 
+	logging.info(f":: Fetching latest Submissions For {bot_name}")
 	pending_submissions = repository.search_for_pending("Submission", bot_name)
 
 	for record in chain_listing_generators(pending_comments, pending_submissions):
@@ -85,11 +87,11 @@ def main(message: func.QueueMessage) -> None:
 
 		record.TextGenerationPrompt = processed
 
-		reply_probability_target = random.randint(1, 100)
+		reply_probability_target = round(random.random() * 100)
 
-		if record.InputType == "Submission":
+		if record.InputType == "Submission" or record.Author not in bot_name_list:
 			repository.update_entity(record)
-			queue = queue_proxy.service.get_queue_client(random.choice(all_workers), message_encode_policy=TextBase64EncodePolicy())
+			queue = queue_proxy.service.get_queue_client(random.choice(priority_worker), message_encode_policy=TextBase64EncodePolicy())
 			queue.send_message(json.dumps(record.as_dict()))
 			logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
 			continue
@@ -108,30 +110,35 @@ def main(message: func.QueueMessage) -> None:
 			continue
 
 	####################################################################################################################
-	logging.info(f":: Initializing Reply After Main Routine")
-	reply_service.invoke()
-
 	logging.info(f":: Collecting Submissions for {bot_name}")
 	submissions: [Submission] = subreddit.stream.submissions(pause_after=0, skip_existing=False)
 
 	logging.info(f":: Collecting Comments for {bot_name}")
 	comments: [Comment] = subreddit.stream.comments(pause_after=0, skip_existing=False)
 
-	new_inputs = []
+	logging.info(f":: Handling Submissions for {bot_name}")
+	start_time = time.time()
 	for reddit_thing in submissions:
 		if reddit_thing is None:
 			break
-		handled = handle_submission(reddit_thing, user, repository, reply_logic)
-		if handled is not None:
-			new_inputs.append(handled)
+		if round(time.time() - start_time) > 60:
+			logging.info(":: Halting Collection Past 1 Minute For Submissions")
+			break
+		handle_submission(reddit_thing, user, repository, reply_logic)
 
+	start_time = time.time()
+	logging.info(f":: Handling Incoming Comments for {bot_name}")
 	for reddit_thing in comments:
 		if reddit_thing is None:
+			logging.info(":: Halting Collection Past 1 Minute For Comments")
 			break
-		handled = handle_comment(reddit_thing, user, repository, reply_logic, reddit)
-		if handled is not None:
-			new_inputs.append(handled)
+		if round(time.time() - start_time) > 60:
+			break
+		handle_comment(reddit_thing, user, repository, reply_logic, reddit)
 	####################################################################################################################
+
+	logging.info(f":: Initializing Reply After Main Routine for {bot_name}")
+	reply_service.invoke()
 
 	logging.info(f":: Polling Method Complete For {bot_name}")
 	return None
@@ -173,7 +180,7 @@ def handle_submission(thing: Submission, user: Redditor, repository: DataReposit
 	if mapped_input.RespondingBot == mapped_input.Author:
 		return None
 
-	if timestamp_to_hours(thing.created_utc) > 12:
+	if timestamp_to_hours(thing.created_utc) > 16:
 		logging.debug(f":: {mapped_input.InputType} to old {mapped_input.Id} for {user.name}")
 		return None
 

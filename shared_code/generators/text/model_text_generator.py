@@ -49,9 +49,12 @@ class ModelTextGenerator(object):
 		import re
 		import os
 		processes = torch.cuda.list_gpu_processes()
+		current_process = os.getpid()
 		matched_process = re.findall("\s+(\d+)\s\D+", processes)
-		if len(matched_process) != 0:
-			for proc in matched_process:
-				logging.info(f":: Killing CUDA Task with PID: {proc}")
-				os.system(f"taskkill /F /PID {proc}")
+		procs = [int(proc) for proc in matched_process]
+		if current_process in procs:
+			logging.info(f":: Killing CUDA Task with PID: {current_process}")
+			os.system(f"taskkill /F /PID {current_process}")
+		else:
+			logging.error(f":: No Process in {procs} can be located for running PID {current_process}")
 

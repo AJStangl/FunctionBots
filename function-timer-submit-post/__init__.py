@@ -8,8 +8,9 @@ from shared_code.helpers.tagging import TaggingMixin
 from shared_code.models.bot_configuration import BotConfigurationManager
 from shared_code.helpers.image_scrapper import ImageScrapper
 
+
 def main(submissionTimer: func.TimerRequest) -> None:
-	logging.info(f":: Submission Trigger Called at {time.time()}")
+	logging.info(f":: Submission Trigger Called")
 	manager = BotConfigurationManager()
 	generator = ModelTextGenerator()
 	reddit_helper = RedditManager()
@@ -17,6 +18,8 @@ def main(submissionTimer: func.TimerRequest) -> None:
 	scrapper: ImageScrapper = ImageScrapper()
 
 	configs = list(filter(manager.filter_configuration, manager.get_configuration()))
+
+	random.shuffle(configs)
 
 	for bot in configs:
 		for sub in bot.SubReddits:
