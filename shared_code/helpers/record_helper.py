@@ -7,8 +7,7 @@ from shared_code.database.instance import TableRecord
 
 class TableHelper:
 	@staticmethod
-	def map_base_to_message(reddit_id: str, sub_reddit: str, input_type: str, submitted_date: int, author: str,
-							responding_bot: str, time_in_hours: int, reply_probability: int) -> TableRecord:
+	def map_base_to_message(reddit_id: str, sub_reddit: str, input_type: str, submitted_date: int, author: str, responding_bot: str, time_in_hours: int, reply_probability: int, url: str) -> TableRecord:
 		set_id = f"{reddit_id}|{responding_bot}"
 		record = TableRecord()
 		record.Id = set_id
@@ -26,6 +25,7 @@ class TableHelper:
 		record.ReplyProbability = reply_probability
 		record.DateTimeCreated = str(datetime.datetime.now())
 		record.DateTimeSubmitted = None
+		record.Url = url
 		return record
 
 	@staticmethod

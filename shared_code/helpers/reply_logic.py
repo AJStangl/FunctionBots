@@ -14,7 +14,7 @@ class ReplyLogic:
 		self._interrogative_reply_boost = .5
 		self._new_submission_reply_boost = 1
 		self._human_author_reply_boost = 1
-		self._bot_author_reply_boost = .8
+		self._bot_author_reply_boost = .5
 		self._comment_depth_reply_penalty = 0.05
 		self._base_reply_probability = 0
 		self._do_not_reply_bot_usernames = []
@@ -23,18 +23,12 @@ class ReplyLogic:
 		self._own_submission_reply_boost = .8
 
 	def calculate_reply_probability(self, praw_thing: RedditBase):
-		# Ths function contains all of the logic used for deciding whether to reply
 
 		if not praw_thing.author:
-			# If the praw_thing has been deleted the author will be None,
-			# don't proceed to attempt a reply. Usually we will have downloaded
-			# the praw_thing before it is deleted so this won't get hit often.
 			return 0
 		elif praw_thing.author.name.lower() == self._praw.user.me().name.lower():
-			# The incoming praw object's author is the bot, so we won't reply
 			return 0
 		elif praw_thing.author.name.lower() in self._do_not_reply_bot_usernames:
-			# Ignore comments/messages from Admins
 			return 0
 
 		# merge the text content into a single variable so it's easier to work with
@@ -61,66 +55,46 @@ class ReplyLogic:
 			thing_text_content = praw_thing.body
 			submission_created_utc = datetime.utcfromtimestamp(praw_thing.created_utc)
 
-		# if the bot is mentioned, or its username is in the thing_text_content, reply 100%
 		if getattr(praw_thing, 'type', '') == 'username_mention' or\
 			self._praw.user.me().name.lower() in thing_text_content.lower() or\
 			isinstance(praw_thing, Message):
 			return self._message_mention_reply_probability
 
-		# From here we will start to calculate the probability cumulatively
-		# Adjusting the weights here will change how frequently the bot will post
-		# Try not to spam the sub too much and let other bots and humans have space to post
 		base_probability = self._base_reply_probability
 
 		if isinstance(praw_thing, Comment):
-			# Find the depth of the comment
 			comment_depth = self._find_depth_of_comment(praw_thing)
-			if comment_depth > 12:
-				# don't reply to deep comments, to prevent bots replying in a loop
+			if comment_depth > 6:
 				return 0
 			else:
-				# Reduce the reply probability x% for each level of comment depth
-				# to keep the replies higher up
 				base_probability -= ((comment_depth - 1) * self._comment_depth_reply_penalty)
 
-		# Check the flair and username to see if the author might be a bot
-		# 'Verified GPT-2 Bot' is only valid on r/subsimgpt2interactive
-		# Sometimes author_flair_text will be present but None
 		if 'verified gpt-2' in (getattr(praw_thing, 'author_flair_text', '') or '').lower()\
 			or any(praw_thing.author.name.lower().endswith(i) for i in ['ssi', 'bot', 'gpt2']):
-			# Adjust for when the author is a bot
 			base_probability += self._bot_author_reply_boost
 		else:
-			# assume humanoid if author metadata doesn't meet the criteria for a bot
 			base_probability += self._human_author_reply_boost
 
 		if isinstance(praw_thing, Submission):
-			# it's a brand new submission.
-			# This is mostly obsoleted by the depth penalty
 			base_probability += self._new_submission_reply_boost
 
 		if isinstance(praw_thing, Submission) or is_own_comment_reply:
 			if any(kw.lower() in thing_text_content.lower() for kw in ['?', ' you', 'what', 'how', 'when', 'why']):
-				# any interrogative terms in the submission or comment text;
-				# results in an increased reply probability
 				base_probability += self._interrogative_reply_boost
 
 		if isinstance(praw_thing, Comment):
 			if praw_thing.parent().author == self._praw.user.me().name:
-				# the post prior to this is by the bot
 				base_probability += self._own_comment_reply_boost
 
 			if praw_thing.submission.author == self._praw.user.me().name:
-				# the submission is by the bot, and favor that with a boost
 				base_probability += self._own_submission_reply_boost
 
 		reply_probability = min(base_probability, 1)
-		#
-		# work out the age of submission in hours
+
 		age_of_submission = (datetime.utcnow() - submission_created_utc).total_seconds() / 3600
-		# calculate rate of decay over x hours
+
 		rate_of_decay = max(0, 1 - (age_of_submission / 24))
-		# multiply the rate of decay by the reply probability
+
 		return round(reply_probability * rate_of_decay, 2) * 100
 
 	def _find_depth_of_comment(self, praw_comment) -> int:

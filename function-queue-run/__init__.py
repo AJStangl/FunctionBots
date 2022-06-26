@@ -68,6 +68,49 @@ def main(message: func.QueueMessage) -> None:
 	logging.info(f":: Initializing Reply Before Main Routine")
 	reply_service.invoke()
 
+	####################################################################################################################
+	logging.info(f":: Handling pending comments and submissions from database for {bot_name}")
+	pending_comments = repository.search_for_pending("Comment", bot_name)
+
+	pending_submissions = repository.search_for_pending("Submission", bot_name)
+
+	for record in chain_listing_generators(pending_comments, pending_submissions):
+		if record is None:
+			continue
+
+		# Extract the record and set the status
+		record = record['TableRecord']
+		record.Status = 1
+		processed = process_input(record, reddit, tagging_mixin)
+
+		record.TextGenerationPrompt = processed
+
+		reply_probability_target = random.randint(1, 100)
+
+		if record.InputType == "Submission":
+			repository.update_entity(record)
+			queue = queue_proxy.service.get_queue_client(random.choice(all_workers), message_encode_policy=TextBase64EncodePolicy())
+			queue.send_message(json.dumps(record.as_dict()))
+			logging.debug(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
+			continue
+
+		if record.ReplyProbability > reply_probability_target and record.InputType == "Comment":
+			queue = queue_proxy.service.get_queue_client(random.choice(all_workers), message_encode_policy=TextBase64EncodePolicy())
+			queue.send_message(json.dumps(record.as_dict()))
+			repository.update_entity(record)
+			logging.debug(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
+			continue
+
+		else:
+			logging.debug(f":: Ignoring {record.InputType} for {record.RespondingBot} has a Probability of {record.ReplyProbability} but needs {reply_probability_target}")
+			record.Status = 2
+			repository.update_entity(record)
+			continue
+
+	####################################################################################################################
+	logging.info(f":: Initializing Reply After Main Routine")
+	reply_service.invoke()
+
 	logging.info(f":: Collecting Submissions for {bot_name}")
 	submissions: [Submission] = subreddit.stream.submissions(pause_after=0, skip_existing=False)
 
@@ -89,46 +132,7 @@ def main(message: func.QueueMessage) -> None:
 		if handled is not None:
 			new_inputs.append(handled)
 
-	logging.info(f":: Polling Complete. {len(new_inputs)} have been found - Starting Processing")
-
-	pending_comments = repository.search_for_pending("Comment", bot_name)
-
-	pending_submissions = repository.search_for_pending("Submission", bot_name)
-
-	for record in chain_listing_generators(pending_comments, pending_submissions):
-		if record is None:
-			continue
-
-		# Extract the record and set the status
-		record = record['TableRecord']
-		record.Status = 1
-		processed = process_input(record, reddit, tagging_mixin)
-		record.TextGenerationPrompt = processed
-
-		reply_probability_target = random.randint(1, 100)
-
-		if record.InputType == "Submission" or record.ReplyProbability == 100:
-			repository.update_entity(record)
-			queue = queue_proxy.service.get_queue_client(random.choice(all_workers), message_encode_policy=TextBase64EncodePolicy())
-			queue.send_message(json.dumps(record.as_dict()))
-			logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
-
-		if record.ReplyProbability > reply_probability_target and record.InputType == "Comment":
-			queue = queue_proxy.service.get_queue_client(random.choice(all_workers), message_encode_policy=TextBase64EncodePolicy())
-			queue.send_message(json.dumps(record.as_dict()))
-			repository.update_entity(record)
-			logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
-			continue
-
-		else:
-			logging.info(f":: Ignoring {record.InputType} for {record.RespondingBot} with Probability not {record.ReplyProbability} > {reply_probability_target}")
-			record.Status = 2
-			repository.update_entity(record)
-			continue
-
-	logging.info(f":: Initializing Reply After Main Routine")
-	reply_service.invoke()
-
+	####################################################################################################################
 	logging.info(f":: Polling Method Complete For {bot_name}")
 	return None
 
@@ -161,7 +165,8 @@ def handle_submission(thing: Submission, user: Redditor, repository: DataReposit
 		submitted_date=thing.created,
 		author=getattr(thing.author, 'name', ''),
 		responding_bot=user.name,
-		reply_probability=probability
+		reply_probability=probability,
+		url=thing.url
 	)
 
 	# Filter Out Where responding bot is the author
@@ -187,7 +192,8 @@ def handle_comment(comment: Comment, user: Redditor, repository: DataRepository,
 		author=getattr(comment.author, 'name', ''),
 		responding_bot=user.name,
 		time_in_hours=timestamp_to_hours(comment.created),
-		reply_probability=probability
+		reply_probability=probability,
+		url=comment.permalink,
 	)
 
 	if mapped_input.RespondingBot == mapped_input.Author:

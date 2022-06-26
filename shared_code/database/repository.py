@@ -3,7 +3,7 @@ import os
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
+from sqlalchemy import desc
 from shared_code.database.instance import engine, TableRecord
 
 
@@ -29,8 +29,11 @@ class DataRepository:
 			if entity:
 				return entity
 			else:
-				self.create_entry(record)
+				session.add(record)
+				session.commit()
 				return record
+		except Exception as e:
+			logging.info(f":: {e}")
 		finally:
 			session.close()
 
@@ -43,7 +46,7 @@ class DataRepository:
 					.where(TableRecord.InputType == input_type)
 					.where(TableRecord.RespondingBot == bot_name)
 					.limit(10)
-					.order_by(TableRecord.TimeInHours))\
+					.order_by(desc(TableRecord.ContentDateSubmitted)))\
 				.all()
 			return entity
 		finally:

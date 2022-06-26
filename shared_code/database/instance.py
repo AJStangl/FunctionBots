@@ -1,7 +1,6 @@
 import os
 
 import psycopg2
-from sqlalchemy import Date
 from sqlalchemy import Boolean
 from sqlalchemy import Column
 from sqlalchemy import Integer
@@ -33,13 +32,12 @@ class TableRecord(Base):
 	HasResponded = Column(Boolean)
 	Status = Column(Integer)
 	ReplyProbability = Column(Integer)
+	Url = Column(String)
 
 	def as_dict(self):
 		return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 engine = create_engine(f"postgresql://{user}:{password}@localhost:5432/redditData", pool_size=30, max_overflow=-1)
-
-# engine = create_engine('sqlite:///shared_code/database/bot-db.sqlite3?check_same_thread=False', echo=False)
 
 Base.metadata.create_all(engine)
 
