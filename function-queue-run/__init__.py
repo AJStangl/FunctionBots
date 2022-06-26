@@ -25,8 +25,6 @@ Main Function For Bot
 
 Input: poll-queue
 """
-
-
 def main(message: func.QueueMessage) -> None:
 	all_workers = ["worker-2", "worker-3"]
 	priority_worker = ["worker-1"]
@@ -39,7 +37,7 @@ def main(message: func.QueueMessage) -> None:
 
 	bot_configuration_manager: BotConfigurationManager = BotConfigurationManager()
 
-	bot_name_list = [bot.Name for bot in bot_configuration_manager.get_configuration()]
+	bot_name_list = [bot.Name.upper() for bot in bot_configuration_manager.get_configuration()]
 
 	tagging_mixin: TaggingMixin = TaggingMixin()
 
@@ -89,7 +87,14 @@ def main(message: func.QueueMessage) -> None:
 
 		reply_probability_target = round(random.random() * 100)
 
-		if record.InputType == "Submission" or record.Author not in bot_name_list:
+		if record.Author.upper() not in bot_name_list:
+			repository.update_entity(record)
+			queue = queue_proxy.service.get_queue_client(random.choice(priority_worker),message_encode_policy=TextBase64EncodePolicy())
+			queue.send_message(json.dumps(record.as_dict()))
+			logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
+			continue
+
+		if record.InputType == "Submission":
 			repository.update_entity(record)
 			queue = queue_proxy.service.get_queue_client(random.choice(priority_worker), message_encode_policy=TextBase64EncodePolicy())
 			queue.send_message(json.dumps(record.as_dict()))
@@ -223,7 +228,7 @@ def handle_comment(comment: Comment, user: Redditor, repository: DataRepository,
 
 
 def timestamp_to_hours(utc_timestamp):
-	return int((datetime.datetime.utcnow() - datetime.datetime.fromtimestamp(utc_timestamp)).total_seconds() / 3600)
+	return int((datetime.datetime.utcnow() - datetime.datetime.fromtimestamp(utc_timestamp)).total_seconds() / 3600) - 4
 
 
 def chain_listing_generators(*iterables):

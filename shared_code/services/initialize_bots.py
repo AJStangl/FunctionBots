@@ -16,10 +16,9 @@ class StartService:
 
 		configs = list(filter(filter_configuration, self.manager.get_configuration()))
 
-		random.shuffle(configs)
+		# random.shuffle(configs)
 
 		messages = []
-
 		for config in configs:
 			message = {
 				"Name": config.Name,
@@ -31,7 +30,7 @@ class StartService:
 
 		logging.info(f":: Randomizing the BOIS")
 
-		random.shuffle(messages)
+		# random.shuffle(messages)
 
 		logging.info(f":: Sending the bois to the front lines!")
 

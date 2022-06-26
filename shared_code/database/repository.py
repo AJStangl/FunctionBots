@@ -45,7 +45,7 @@ class DataRepository:
 					.where(TableRecord.Status == 0)
 					.where(TableRecord.InputType == input_type)
 					.where(TableRecord.RespondingBot == bot_name)
-					.limit(10)
+					.limit(30)
 					.order_by(desc(TableRecord.ContentDateSubmitted)))\
 				.all()
 			return entity

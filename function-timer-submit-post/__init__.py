@@ -2,6 +2,9 @@ import logging
 import time
 import azure.functions as func
 import random
+
+from praw.reddit import Redditor, Submission
+
 from shared_code.generators.text.model_text_generator import ModelTextGenerator
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.helpers.tagging import TaggingMixin
@@ -30,6 +33,13 @@ def main(submissionTimer: func.TimerRequest) -> None:
 			result = generator.generate_text(bot.Name, prompt, True)
 			extracted_prompt = tagging.extract_submission_from_generated_text(result)
 			instance = reddit_helper.get_praw_instance_for_bot(bot.Name)
+			me: Redditor = instance.user.me()
+
+			# We assume that the first item in the list is the most recent per the documentation on how this method works.
+			last_posted_sub: Submission = list(me.submissions.new())[0]
+			last_created_time_utc = reddit_helper.timestamp_to_hours(last_posted_sub.created_utc)
+			if last_created_time_utc > 1:
+				continue
 
 			logging.debug(f":: Submitting Post to {target_sub} for {bot.Name}")
 

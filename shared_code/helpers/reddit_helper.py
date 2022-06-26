@@ -1,4 +1,5 @@
 import logging
+import datetime
 
 from praw import Reddit
 
@@ -18,3 +19,18 @@ class RedditManager:
 		logging.debug(f":: Initializing Reddit Praw Instance for {bot_name}")
 		reddit = Reddit(site_name=bot_name)
 		return reddit
+
+	@staticmethod
+	def timestamp_to_hours(utc_timestamp):
+		return int((datetime.datetime.utcnow() - datetime.datetime.fromtimestamp(utc_timestamp)).total_seconds() / 3600)
+
+	@staticmethod
+	def chain_listing_generators(*iterables):
+		# Special tool for chaining PRAW's listing generators
+		# It joins the three iterables together so that we can DRY
+		for it in iterables:
+			for element in it:
+				if element is None:
+					break
+				else:
+					yield element
