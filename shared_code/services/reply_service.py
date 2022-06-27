@@ -17,7 +17,7 @@ from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 class ReplyService:
 	def __init__(self):
 		self.logging = logging.getLogger(__name__)
-		self.bad_key_words = ["removed", "nouniqueideas007"]
+		self.bad_key_words = ["removed", "nouniqueideas007", "ljthefa"]
 		self.tagging: TaggingMixin = TaggingMixin()
 		self.reddit_manager: RedditManager = RedditManager()
 		self.queue_service: QueueServiceClient = QueueServiceProxy().service
@@ -81,6 +81,7 @@ class ReplyService:
 					entity.Status = 3
 					entity.DateTimeSubmitted = str(datetime.datetime.now())
 					self.repository.update_entity(entity)
+					continue
 
 			if entity.InputType == "Submission":
 				sub_instance: Submission = reddit.submission(id=entity.RedditId)
@@ -91,6 +92,7 @@ class ReplyService:
 				entity.DateTimeSubmitted = str(datetime.datetime.now())
 				entity.TextGenerationResponse = body
 				self.repository.update_entity(entity)
+				continue
 
 			if entity.InputType == "Comment":
 				logging.info(f":: Sending Out Reply To Comment - {entity.RedditId}")
@@ -101,3 +103,4 @@ class ReplyService:
 				entity.DateTimeSubmitted = str(datetime.datetime.now())
 				entity.TextGenerationResponse = body
 				self.repository.update_entity(entity)
+				continue

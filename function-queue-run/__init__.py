@@ -26,7 +26,8 @@ Main Function For Bot
 Input: poll-queue
 """
 def main(message: func.QueueMessage) -> None:
-	all_workers = ["worker-2", "worker-3"]
+	all_workers = ["worker-1", "worker-2", "worker-3"]
+
 	priority_worker = ["worker-1"]
 
 	reddit_helper: RedditManager = RedditManager()
@@ -89,14 +90,14 @@ def main(message: func.QueueMessage) -> None:
 
 		if record.Author.upper() not in bot_name_list:
 			repository.update_entity(record)
-			queue = queue_proxy.service.get_queue_client(random.choice(priority_worker),message_encode_policy=TextBase64EncodePolicy())
+			queue = queue_proxy.service.get_queue_client(random.choice(all_workers), message_encode_policy=TextBase64EncodePolicy())
 			queue.send_message(json.dumps(record.as_dict()))
 			logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
 			continue
 
 		if record.InputType == "Submission":
 			repository.update_entity(record)
-			queue = queue_proxy.service.get_queue_client(random.choice(priority_worker), message_encode_policy=TextBase64EncodePolicy())
+			queue = queue_proxy.service.get_queue_client(random.choice(all_workers), message_encode_policy=TextBase64EncodePolicy())
 			queue.send_message(json.dumps(record.as_dict()))
 			logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
 			continue
@@ -126,8 +127,8 @@ def main(message: func.QueueMessage) -> None:
 	for reddit_thing in submissions:
 		if reddit_thing is None:
 			break
-		if round(time.time() - start_time) > 60:
-			logging.info(":: Halting Collection Past 1 Minute For Submissions")
+		if round(time.time() - start_time) > 120:
+			logging.info(":: Halting Collection Past 2 Minute For Submissions")
 			break
 		handle_submission(reddit_thing, user, repository, reply_logic)
 
@@ -135,9 +136,9 @@ def main(message: func.QueueMessage) -> None:
 	logging.info(f":: Handling Incoming Comments for {bot_name}")
 	for reddit_thing in comments:
 		if reddit_thing is None:
-			logging.info(":: Halting Collection Past 1 Minute For Comments")
+			logging.info(":: Halting Collection Past 2 Minute For Comments")
 			break
-		if round(time.time() - start_time) > 60:
+		if round(time.time() - start_time) > 120:
 			break
 		handle_comment(reddit_thing, user, repository, reply_logic, reddit)
 	####################################################################################################################
@@ -216,7 +217,7 @@ def handle_comment(comment: Comment, user: Redditor, repository: DataRepository,
 	sub = instance.submission(id=sub_id)
 
 	if sub.num_comments > int(os.environ["MaxComments"]):
-		logging.debug(f":: Submission for Comment Has To Many Replies {comment.submission.num_comments} for {user.name}")
+		logging.debug(f":: Submission for Comment Has To Many Replies {sub.num_comments} for {user.name}")
 		return None
 
 	if comment.submission.locked:

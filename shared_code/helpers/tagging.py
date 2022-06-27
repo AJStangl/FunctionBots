@@ -236,6 +236,9 @@ class TaggingMixin:
 
 		return_dict = {}
 
+		if generated_text is None:
+			return {}
+
 		# remove any cruft
 		generated_text = generated_text.replace('&amp;#x200B;\n', '')
 
