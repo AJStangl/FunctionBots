@@ -8,7 +8,7 @@ from praw.reddit import Redditor, Submission
 from shared_code.generators.text.model_text_generator import ModelTextGenerator
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.helpers.tagging import TaggingMixin
-from shared_code.models.bot_configuration import BotConfigurationManager
+from shared_code.models.bot_configuration import BotConfigurationManager, BotConfiguration
 from shared_code.helpers.image_scrapper import ImageScrapper
 
 
@@ -24,48 +24,52 @@ def main(submissionTimer: func.TimerRequest) -> None:
 
 	random.shuffle(configs)
 
-	for bot in configs:
-		for sub in bot.SubReddits:
-			image_gen_prob = random.randint(1, 2)
-			logging.info(f":: Starting Submission For {bot.Name} to {sub}")
-			target_sub = sub
-			prompt = tagging.get_random_new_submission_tag(subreddit=sub)
-			result = generator.generate_text(bot.Name, prompt, True)
-			extracted_prompt = tagging.extract_submission_from_generated_text(result)
-			instance = reddit_helper.get_praw_instance_for_bot(bot.Name)
-			me: Redditor = instance.user.me()
+	bot: BotConfiguration = configs[0]
 
-			# We assume that the first item in the list is the most recent per the documentation on how this method works.
-			last_posted_sub: Submission = list(me.submissions.new())[0]
-			last_created_time_utc = reddit_helper.timestamp_to_hours(last_posted_sub.created_utc)
-			if last_created_time_utc > 1:
+	# for bot in configs:
+	for sub in bot.SubReddits:
+		instance = reddit_helper.get_praw_instance_for_bot(bot.Name)
+		last_posted_sub: Submission = list(instance.user.me().submissions.new())[0]
+		last_created_time_utc = RedditManager.timestamp_to_hours(last_posted_sub.created_utc) - 4
+		if last_created_time_utc < 1:
+			print(f":: Nice try fucker - Time Since Last For Is {last_posted_sub} for {bot.Name}")
+			continue
+
+		image_gen_prob = random.randint(1, 2)
+		target_sub = sub
+		prompt = tagging.get_random_new_submission_tag(subreddit=sub)
+		result = generator.generate_text(bot.Name, prompt, True)
+		extracted_prompt = tagging.extract_submission_from_generated_text(result)
+
+		print(f":: Submitting Post to {target_sub} for {bot.Name}")
+
+		if extracted_prompt is None:
+			print(f":: Prompt is empty for {bot.Name}")
+			continue
+
+		if image_gen_prob == 1:
+			image_url = scrapper.get_image_post(bot.Name, result)
+			new_prompt = {
+				'title': extracted_prompt['title'],
+				'url': image_url
+			}
+			try:
+				print(f":: The prompt is: {extracted_prompt} for {bot.Name} to {target_sub}")
+				sub = instance.subreddit(target_sub)
+				sub.submit(**new_prompt)
+				continue
+			except Exception as e:
+				print(f":: Process Failed posting Image {e}")
+				continue
+		else:
+			try:
+				print(f":: The prompt is: {extracted_prompt} for {bot.Name} to {target_sub}")
+				sub = instance.subreddit(target_sub)
+				sub.submit(**extracted_prompt)
+			except Exception as e:
+				print(f":: Process Failed {e}")
 				continue
 
-			logging.debug(f":: Submitting Post to {target_sub} for {bot.Name}")
-
-			if extracted_prompt is None:
-				logging.debug(f":: Prompt is empty for {bot.Name}")
-				continue
-
-			if image_gen_prob == 1:
-				image_url = scrapper.get_image_post(bot.Name, result)
-				new_prompt = {
-					'title': extracted_prompt['title'],
-					'url': image_url
-				}
-				try:
-					logging.debug(f":: The prompt is: {extracted_prompt} for {bot.Name} to {target_sub}")
-					sub = instance.subreddit(target_sub)
-					sub.submit(**new_prompt)
-					continue
-				except Exception as e:
-					logging.error(f":: Process Failed posting Image {e}")
-			else:
-				try:
-					logging.debug(f":: The prompt is: {extracted_prompt} for {bot.Name} to {target_sub}")
-					sub = instance.subreddit(target_sub)
-					sub.submit(**extracted_prompt)
-				except Exception as e:
-					logging.error(f":: Process Failed {e}")
+	return None
 
 	return None

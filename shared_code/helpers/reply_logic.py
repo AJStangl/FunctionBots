@@ -10,17 +10,17 @@ from praw.reddit import Submission, Comment
 
 class ReplyLogic:
 	def __init__(self, instance: Reddit):
-		self._own_comment_reply_boost = .25
-		self._interrogative_reply_boost = .25
-		self._new_submission_reply_boost = 1
-		self._human_author_reply_boost = .25
-		self._bot_author_reply_boost = .25
-		self._comment_depth_reply_penalty = 0.1
-		self._base_reply_probability = 0
+		self._own_comment_reply_boost: float = 0.8
+		self._interrogative_reply_boost: float = 0.25
+		self._new_submission_reply_boost: float = 1.0
+		self._human_author_reply_boost: float = 0.6
+		self._bot_author_reply_boost: float = 0.25
+		self._comment_depth_reply_penalty: float = 0.1
+		self._base_reply_probability: float = 0
 		self._do_not_reply_bot_usernames = []
-		self._message_mention_reply_probability = 1
+		self._message_mention_reply_probability: float = 1.0
 		self._praw: Reddit = instance
-		self._own_submission_reply_boost = .6
+		self._own_submission_reply_boost: float = 0.8
 
 	def calculate_reply_probability(self, praw_thing: RedditBase):
 
