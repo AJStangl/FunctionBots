@@ -83,6 +83,9 @@ def main(message: func.QueueMessage) -> None:
 		record = record['TableRecord']
 		record.Status = 1
 		processed = process_input(record, reddit, tagging_mixin)
+		if processed is None:
+			logging.info(f":: Failed To Process {record.RedditId} for {record.RespondingBot}")
+			continue
 
 		record.TextGenerationPrompt = processed
 
@@ -161,6 +164,8 @@ def process_input(record: TableRecord, instance: Reddit, tagging_mixin: TaggingM
 
 	if record.InputType == "Comment":
 		thing = instance.comment(id=record.RedditId)
+		if thing is None:
+			return None
 		history = tagging_mixin.collate_tagged_comment_history(thing)
 		cleaned_history = tagging_mixin.remove_username_mentions_from_string(history, record.RespondingBot)
 		reply_start_tag = tagging_mixin.get_reply_tag(thing, record.RespondingBot)

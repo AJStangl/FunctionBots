@@ -1,4 +1,5 @@
 import codecs
+import logging
 import re
 
 import ftfy
@@ -63,17 +64,22 @@ class TaggingMixin:
 
 		*This section is customisable for your own bot and how it has been finetuned*
 		"""
-		if use_reply_sense:
-			if isinstance(thing, Comment):
-				# Need this praw_Comment check for message replies
-				if thing.submission:
-					# The submission was by the bot so use special tag
-					if thing.submission.author.name.lower() == bot_username.lower():
-						return '<|soopr|>'
-				if thing.parent():
-					# if the parent's parent was by the author bot, use the own content tag
-					if thing.parent().author.name.lower() == bot_username.lower():
-						return '<|soocr|>'
+		try:
+			if use_reply_sense:
+				parent = thing.parent()
+				if isinstance(thing, Comment):
+					# Need this praw_Comment check for message replies
+					if thing.submission:
+						# The submission was by the bot so use special tag
+						if thing.submission.author.name.lower() == bot_username.lower():
+							return '<|soopr|>'
+					if parent is not None:
+						# if the parent's parent was by the author bot, use the own content tag
+						if parent.author.name.lower() == bot_username.lower():
+							return '<|soocr|>'
+		except Exception as e:
+			logging.info(e)
+			pass
 
 		# It's just a straight reply
 		return self._reply_start_tag
