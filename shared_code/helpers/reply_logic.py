@@ -39,7 +39,7 @@ class ReplyLogic:
 		is_own_comment_reply = False
 
 		if isinstance(praw_thing, Submission):
-			return 1
+			return 101
 			# object is a submission that has title and selftext
 			thing_text_content = f'{praw_thing.title} {praw_thing.selftext}'
 			submission_link_flair_text = praw_thing.link_flair_text or ''
@@ -56,7 +56,7 @@ class ReplyLogic:
 			submission_created_utc = datetime.utcfromtimestamp(praw_thing.created_utc)
 
 		if getattr(praw_thing, 'type', '') == 'username_mention' or self._praw.user.me().name.lower() in thing_text_content.lower() or isinstance(praw_thing, Message):
-			return self._message_mention_reply_probability
+			return self._message_mention_reply_probability * 100
 
 		base_probability = self._base_reply_probability
 
