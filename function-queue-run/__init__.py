@@ -9,7 +9,6 @@ import azure.functions as func
 from azure.storage.queue import TextBase64EncodePolicy
 from praw.models import Submission
 from praw.reddit import Redditor, Reddit, Comment
-
 from shared_code.database.instance import TableRecord
 from shared_code.database.repository import DataRepository
 from shared_code.helpers.record_helper import TableHelper
@@ -139,9 +138,9 @@ def main(message: func.QueueMessage) -> None:
 	logging.info(f":: Handling Incoming Comments for {bot_name}")
 	for reddit_thing in comments:
 		if reddit_thing is None:
-			logging.info(":: Halting Collection Past 2 Minute For Comments")
 			break
 		if round(time.time() - start_time) > 120:
+			logging.info(":: Halting Collection Past 2 Minute For Comments")
 			break
 		handle_comment(reddit_thing, user, repository, reply_logic, reddit)
 	####################################################################################################################
@@ -174,7 +173,16 @@ def process_input(record: TableRecord, instance: Reddit, tagging_mixin: TaggingM
 
 
 def handle_submission(thing: Submission, user: Redditor, repository: DataRepository, reply_probability: ReplyLogic) -> Optional[TableRecord]:
+	# Filter Out Where responding bot is the author
+	if user.name == getattr(thing.author, 'name', ''):
+		return None
+
+	if timestamp_to_hours(thing.created_utc) > 16:
+		logging.debug(f":: Submission to old {thing.id} for {user.name}")
+		return None
+
 	probability = reply_probability.calculate_reply_probability(thing)
+
 	mapped_input: TableRecord = TableHelper.map_base_to_message(
 		reddit_id=thing.id,
 		sub_reddit=thing.subreddit.display_name,
@@ -187,36 +195,12 @@ def handle_submission(thing: Submission, user: Redditor, repository: DataReposit
 		url=thing.url
 	)
 
-	# Filter Out Where responding bot is the author
-	if mapped_input.RespondingBot == mapped_input.Author:
-		return None
-
-	if timestamp_to_hours(thing.created_utc) > 16:
-		logging.debug(f":: {mapped_input.InputType} to old {mapped_input.Id} for {user.name}")
-		return None
-
 	entity = repository.create_if_not_exist(mapped_input)
 
 	return entity
 
 
 def handle_comment(comment: Comment, user: Redditor, repository: DataRepository, reply_probability: ReplyLogic, instance: Reddit) -> Optional[TableRecord]:
-	probability = reply_probability.calculate_reply_probability(comment)
-	mapped_input: TableRecord = TableHelper.map_base_to_message(
-		reddit_id=comment.id,
-		sub_reddit=comment.subreddit.display_name,
-		input_type="Comment",
-		submitted_date=comment.submission.created,
-		author=getattr(comment.author, 'name', ''),
-		responding_bot=user.name,
-		time_in_hours=timestamp_to_hours(comment.created),
-		reply_probability=probability,
-		url=comment.permalink,
-	)
-
-	if mapped_input.RespondingBot == mapped_input.Author:
-		return None
-
 	sub_id = comment.submission.id
 
 	sub = instance.submission(id=sub_id)
@@ -228,9 +212,26 @@ def handle_comment(comment: Comment, user: Redditor, repository: DataRepository,
 	if comment.submission.locked:
 		logging.debug(f":: Comment is locked! Skipping...")
 		return None
-	else:
-		entity = repository.create_if_not_exist(mapped_input)
-		return entity
+
+	if user.name == getattr(comment.author, 'name', ''):
+		return None
+
+	probability = reply_probability.calculate_reply_probability(comment)
+
+	mapped_input: TableRecord = TableHelper.map_base_to_message(
+		reddit_id=comment.id,
+		sub_reddit=comment.subreddit.display_name,
+		input_type="Comment",
+		submitted_date=comment.submission.created,
+		author=getattr(comment.author, 'name', ''),
+		responding_bot=user.name,
+		time_in_hours=timestamp_to_hours(comment.created),
+		reply_probability=probability,
+		url=comment.permalink,
+	)
+	entity = repository.create_if_not_exist(mapped_input)
+
+	return entity
 
 
 def timestamp_to_hours(utc_timestamp):
