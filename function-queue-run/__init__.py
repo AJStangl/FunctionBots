@@ -61,10 +61,10 @@ def main(message: func.QueueMessage) -> None:
 	logging.info(f":: Handling pending comments and submissions from database for {bot_name}")
 
 	logging.info(f":: Fetching latest Comments For {bot_name}")
-	pending_comments = repository.search_for_pending("Comment", bot_name)
+	pending_comments = repository.search_for_pending("Comment", bot_name, 22)
 
 	logging.info(f":: Fetching latest Submissions For {bot_name}")
-	pending_submissions = repository.search_for_pending("Submission", bot_name)
+	pending_submissions = repository.search_for_pending("Submission", bot_name, 10)
 
 	for record in chain_listing_generators(pending_comments, pending_submissions):
 		if record is None:
@@ -83,7 +83,7 @@ def main(message: func.QueueMessage) -> None:
 
 		message_live_in_hours = 60 * 60 * 4 # 4 hours to live before removing message from queue
 
-		reply_probability_target = random.randint(1, 100)
+		reply_probability_target = random.randint(1, 50)
 
 		if record.InputType == "Submission":
 			repository.update_entity(record)
@@ -115,7 +115,7 @@ def main(message: func.QueueMessage) -> None:
 	submissions: [Submission] = subreddit.stream.submissions(pause_after=0, skip_existing=False)
 
 	logging.info(f":: Collecting Comments for {bot_name}")
-	self_comments: [Comment] = reddit.redditor(bot_name).comments.new(limit=20)
+	self_comments: [Comment] = reddit.redditor(bot_name).comments.new(limit=1)
 	comments: [Comment] = subreddit.stream.comments(pause_after=0, skip_existing=False)
 
 	logging.info(f":: Handling Submissions for {bot_name}")
@@ -177,7 +177,7 @@ def insert_submission_to_table(submission: Submission, user: Redditor, repositor
 	probability = reply_probability.calculate_reply_probability(submission)
 
 	if probability == 0:
-		logging.info(f":: Reply Probability for {submission.id} is {probability} for bot - {user.name}")
+		logging.debug(f":: Reply Probability for {submission.id} is {probability} for bot - {user.name}")
 		return None
 
 	mapped_input: TableRecord = TableHelper.map_base_to_message(
@@ -192,7 +192,7 @@ def insert_submission_to_table(submission: Submission, user: Redditor, repositor
 		url=submission.url
 	)
 
-	logging.info(f":: Inserting Record submission {submission.id} for {user.name}")
+	logging.info(f":: Inserting Record submission {submission.id} with probability {probability} for {user.name}")
 	entity = repository.create_if_not_exist(mapped_input)
 
 	return entity
@@ -202,7 +202,7 @@ def insert_comment_to_table(comment: Comment, user: Redditor, repository: DataRe
 	probability = reply_probability.calculate_reply_probability(comment)
 
 	if probability == 0:
-		logging.info(f":: Reply Probability for {comment.id} is {probability} for bot - {user.name}")
+		logging.debug(f":: Reply Probability for {comment.id} is {probability} for bot - {user.name}")
 		return None
 
 	mapped_input: TableRecord = TableHelper.map_base_to_message(
@@ -216,7 +216,7 @@ def insert_comment_to_table(comment: Comment, user: Redditor, repository: DataRe
 		reply_probability=probability,
 		url=comment.permalink)
 
-	logging.info(f":: Inserting Record comment {comment.id} for {user.name}")
+	logging.info(f":: Inserting Record comment {comment.id} with probability {probability} for {user.name}")
 	entity = repository.create_if_not_exist(mapped_input)
 
 	return entity

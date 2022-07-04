@@ -37,7 +37,7 @@ class DataRepository:
 		finally:
 			session.close()
 
-	def search_for_pending(self, input_type: str, bot_name: str):
+	def search_for_pending(self, input_type: str, bot_name: str, limit: int = 10):
 		session = Session(engine)
 		try:
 			entity = session.execute(
@@ -45,7 +45,7 @@ class DataRepository:
 					.where(TableRecord.Status == 0)
 					.where(TableRecord.InputType == input_type)
 					.where(TableRecord.RespondingBot == bot_name)
-					.limit(10)
+					.limit(limit)
 					.order_by(desc(TableRecord.ContentDateSubmitted)))\
 				.all()
 			return entity
