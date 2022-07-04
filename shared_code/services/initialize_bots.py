@@ -1,10 +1,8 @@
-import logging
-import os
-import random
 import json
-from typing import Optional, List
+import logging
+import random
 
-from shared_code.models.bot_configuration import BotConfigurationManager, BotConfiguration
+from shared_code.models.bot_configuration import BotConfigurationManager
 
 
 class StartService:

@@ -2,12 +2,18 @@
   "IsEncrypted": false,
   "Values": {
     "FUNCTIONS_WORKER_RUNTIME": "python",
-    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-    "SubReddit": "CoopAndPablo",
-    "Bot": "SusanBot-GPT2",
-    "Bots": {
-      "Name":"SusanBot-GPT2",
-      "SubReddit": ["CoopAndPablo"]
-    }
+    "AzureWebJobsStorage": "",
+    "AccountName": "",
+    "AccountKey": "",
+    "TableEndpoint": "",
+    "QueueEndpoint": "",
+    "ConnectionString": "",
+    "IsEmulated": "False",
+    "NegativeKeywords": "",
+    "CUDA_LAUNCH_BLOCKING": 0,
+    "CUDA": "True",
+    "MaxComments": 200,
+    "PsqlUser": "",
+    "PsqlPassword": ""
   }
 }

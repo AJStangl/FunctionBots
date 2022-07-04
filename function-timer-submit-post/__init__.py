@@ -1,9 +1,8 @@
 import logging
-import time
 import azure.functions as func
 import random
 
-from praw.reddit import Redditor, Submission
+from praw.reddit import Submission
 
 from shared_code.generators.text.model_text_generator import ModelTextGenerator
 from shared_code.helpers.reddit_helper import RedditManager
@@ -13,7 +12,7 @@ from shared_code.helpers.image_scrapper import ImageScrapper
 
 
 def main(submissionTimer: func.TimerRequest) -> None:
-	logging.info(f":: Submission Trigger Called")
+	logging.info(f":: Submission Creation Trigger Called")
 
 	manager: BotConfigurationManager = BotConfigurationManager()
 
@@ -31,7 +30,6 @@ def main(submissionTimer: func.TimerRequest) -> None:
 
 	bot: BotConfiguration = configs[0]
 
-	# for bot in configs:
 	for sub in bot.SubReddits:
 		instance = reddit_helper.get_praw_instance_for_bot(bot.Name)
 		last_posted_sub: Submission = list(instance.user.me().submissions.new())[0]

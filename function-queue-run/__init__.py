@@ -19,15 +19,9 @@ from shared_code.models.bot_configuration import BotConfiguration, BotConfigurat
 from shared_code.services.reply_service import ReplyService
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 
-"""
-Main Function For Bot
 
-Input: poll-queue
-"""
 def main(message: func.QueueMessage) -> None:
 	all_workers = ["worker-1", "worker-2", "worker-3"]
-
-	priority_worker = ["worker-1"]
 
 	reddit_helper: RedditManager = RedditManager()
 
@@ -76,6 +70,7 @@ def main(message: func.QueueMessage) -> None:
 
 	for record in chain_listing_generators(pending_comments, pending_submissions):
 		if record is None:
+			logging.info(f":: No records found for comments or submission to process for {bot_name}")
 			continue
 
 		# Extract the record and set the status
@@ -90,14 +85,7 @@ def main(message: func.QueueMessage) -> None:
 
 		message_live_in_hours = 60 * 60 * 4
 
-		reply_probability_target = round(random.random() * 100)
-
-		if record.Author.upper() not in bot_name_list:
-			repository.update_entity(record)
-			queue = queue_proxy.service.get_queue_client(random.choice(all_workers), message_encode_policy=TextBase64EncodePolicy())
-			queue.send_message(json.dumps(record.as_dict()), time_to_live=message_live_in_hours)
-			logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
-			continue
+		reply_probability_target = 60
 
 		if record.InputType == "Submission":
 			repository.update_entity(record)
@@ -120,6 +108,7 @@ def main(message: func.QueueMessage) -> None:
 			continue
 
 	####################################################################################################################
+
 	logging.info(f":: Collecting Submissions for {bot_name}")
 	submissions: [Submission] = subreddit.stream.submissions(pause_after=0, skip_existing=False)
 
@@ -128,12 +117,12 @@ def main(message: func.QueueMessage) -> None:
 
 	logging.info(f":: Handling Submissions for {bot_name}")
 	start_time: float = time.time()
-	max_search_time = 60
+	max_search_time = 120
 	for reddit_thing in submissions:
 		if reddit_thing is None:
 			break
 		if round(time.time() - start_time) > max_search_time:
-			logging.info(":: Halting Collection Past 2 Minute For Submissions")
+			logging.info(f":: Halting Collection Past {max_search_time} seconds For Submissions")
 			break
 		handle_submission(reddit_thing, user, repository, reply_logic)
 
@@ -143,7 +132,7 @@ def main(message: func.QueueMessage) -> None:
 		if reddit_thing is None:
 			break
 		if round(time.time() - start_time) > max_search_time:
-			logging.info(":: Halting Collection Past 2 Minute For Comments")
+			logging.info(f":: Halting Collection Past {max_search_time} seconds For Comments")
 			break
 		handle_comment(reddit_thing, user, repository, reply_logic, reddit)
 	####################################################################################################################
@@ -176,7 +165,8 @@ def process_input(record: TableRecord, instance: Reddit, tagging_mixin: TaggingM
 
 
 def handle_submission(thing: Submission, user: Redditor, repository: DataRepository, reply_probability: ReplyLogic) -> Optional[TableRecord]:
-	# Filter Out Where responding bot is the author
+
+	# Ignore when submission is the same for the submitter and responder
 	if user.name == getattr(thing.author, 'name', ''):
 		return None
 
@@ -204,22 +194,12 @@ def handle_submission(thing: Submission, user: Redditor, repository: DataReposit
 
 
 def handle_comment(comment: Comment, user: Redditor, repository: DataRepository, reply_probability: ReplyLogic, instance: Reddit) -> Optional[TableRecord]:
-	sub_id = comment.submission.id
-
-	sub = instance.submission(id=sub_id)
-
-	if sub.num_comments > int(os.environ["MaxComments"]):
-		logging.debug(f":: Submission for Comment Has To Many Replies {sub.num_comments} for {user.name}")
-		return None
-
-	if comment.submission.locked:
-		logging.debug(f":: Comment is locked! Skipping...")
-		return None
-
-	if user.name == getattr(comment.author, 'name', ''):
-		return None
 
 	probability = reply_probability.calculate_reply_probability(comment)
+
+	if probability == 0:
+		logging.info(f":: Reply Probability for {comment.id} is 0 - {user.name}")
+		return None
 
 	mapped_input: TableRecord = TableHelper.map_base_to_message(
 		reddit_id=comment.id,
@@ -230,8 +210,8 @@ def handle_comment(comment: Comment, user: Redditor, repository: DataRepository,
 		responding_bot=user.name,
 		time_in_hours=timestamp_to_hours(comment.created),
 		reply_probability=probability,
-		url=comment.permalink,
-	)
+		url=comment.permalink)
+
 	entity = repository.create_if_not_exist(mapped_input)
 
 	return entity

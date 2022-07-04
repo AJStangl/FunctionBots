@@ -7,7 +7,5 @@ sacremoses
 azure-functions
 azure-storage-queue
 azure-data-tables
-dataclasses~=0.8
-asyncpraw~=7.5.0
 aiohttp~=3.8.1
 sqlalchemy~=1.4.37
