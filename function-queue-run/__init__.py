@@ -61,7 +61,7 @@ def main(message: func.QueueMessage) -> None:
 
 	subreddit = reddit.subreddit(subs)
 
-	logging.info(f":: Initializing Reply Before Main Routine")
+	logging.info(f":: Initializing Reply Before Main Routine for {bot_name}")
 
 	reply_service.invoke()
 
@@ -88,7 +88,7 @@ def main(message: func.QueueMessage) -> None:
 
 		record.TextGenerationPrompt = processed
 
-		message_live_in_hours = 60 * 60 * 1
+		message_live_in_hours = 60 * 60 * 4
 
 		reply_probability_target = round(random.random() * 100)
 

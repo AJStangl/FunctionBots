@@ -72,6 +72,4 @@ class BotConfigurationManager(object):
 			logging.info(f":: {config.Name} is not configured to run. Skipping...")
 			return None
 
-		logging.info(f":: {config.Name} sent for processing")
-
 		return config

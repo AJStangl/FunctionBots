@@ -1,6 +1,4 @@
 import logging
-import os
-import random
 from datetime import datetime
 from typing import Optional
 
@@ -8,6 +6,7 @@ import praw
 from praw import Reddit
 from praw.models import Message, Redditor, Submission, Comment
 from praw.models.reddit.base import RedditBase
+
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.models.bot_configuration import BotConfigurationManager
 

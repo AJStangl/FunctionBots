@@ -11,7 +11,7 @@ class ModelTextGenerator(object):
 	def __init__(self):
 		self.default_text_generation_parameters = {
 			'max_length': 1024,
-			'num_return_sequences': 3,
+			'num_return_sequences': 0,
 			'prompt': None,
 			'temperature': 0.8,
 			'top_k': 40,
@@ -19,9 +19,11 @@ class ModelTextGenerator(object):
 			'stop_token': '<|endoftext|>',
 		}
 
-	def generate_text(self, bot_username, prompt, default_cuda: bool = True) -> str:
+	def generate_text(self, bot_username, prompt, default_cuda: bool = True, num_text_generations: int = 3) -> str:
 		start_time = time.time()
 		config = BotConfigurationManager().get_configuration_by_name(bot_username)
+
+		self.default_text_generation_parameters['num_return_sequences'] = num_text_generations
 
 		if default_cuda:
 			use_gpu = os.environ["Cuda"]
