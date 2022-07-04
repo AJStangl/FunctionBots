@@ -1,23 +1,22 @@
 import datetime
 import json
 import logging
-import os
 import random
-from typing import Optional
 import time
+from typing import Optional
+
 import azure.functions as func
 from azure.storage.queue import TextBase64EncodePolicy
 from praw.models import Submission
-from praw.models.reddit.base import RedditBase
 from praw.reddit import Redditor, Reddit, Comment
+
 from shared_code.database.instance import TableRecord
 from shared_code.database.repository import DataRepository
 from shared_code.helpers.record_helper import TableHelper
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.helpers.reply_logic import ReplyLogic
 from shared_code.helpers.tagging import TaggingMixin
-from shared_code.models.bot_configuration import BotConfiguration, BotConfigurationManager
-from shared_code.services.new_submission_service import SubmissionService
+from shared_code.models.bot_configuration import BotConfiguration
 from shared_code.services.reply_service import ReplyService
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 
@@ -33,13 +32,9 @@ def main(message: func.QueueMessage) -> None:
 
 	tagging_mixin: TaggingMixin = TaggingMixin()
 
-	submission_service: SubmissionService = SubmissionService()
-
 	message_json = message.get_body().decode('utf-8')
 
 	incoming_message: BotConfiguration = json.loads(message_json, object_hook=lambda d: BotConfiguration(**d))
-
-	submission_service.invoke(incoming_message)
 
 	bot_name = incoming_message.Name
 

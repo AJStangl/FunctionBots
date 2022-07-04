@@ -24,11 +24,12 @@ class SubmissionService:
 		logging.info(f":: Invoking Submission Service For {bot_configuration.Name}")
 		instance: Reddit = self.reddit_helper.get_praw_instance_for_bot(bot_configuration.Name)
 		last_posted_sub: Submission = list(instance.user.me().submissions.new())[0]
-		last_created_time_utc = RedditManager.timestamp_to_hours(last_posted_sub.created_utc)
-		if last_created_time_utc < self.submission_interval:
+		last_created = RedditManager.timestamp_to_hours(last_posted_sub.created_utc)
+		if last_created < self.submission_interval:
 			logging.info(f":: Nice try - Time Since Last For Is {last_posted_sub} for {bot_configuration.Name} is less than {self.submission_interval}")
 			return
 
+		logging.info(f"Time Since Last Submission to {bot_configuration.SubReddits[0]} is {last_created}")
 		image_gen_prob = random.randint(1, 2)
 		target_sub = bot_configuration.SubReddits[0]
 		logging.info(f":: Preparing Submission To {target_sub} for {bot_configuration.Name}")
@@ -37,7 +38,6 @@ class SubmissionService:
 		extracted_prompt = self.tagging.extract_submission_from_generated_text(result)
 
 		logging.info(f":: Attempting Submission Post to {target_sub} for {bot_configuration.Name}")
-
 		if extracted_prompt is None:
 			logging.info(f":: Prompt is empty for {bot_configuration.Name}")
 			return

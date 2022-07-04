@@ -5,9 +5,7 @@
       "name": "submissionTimer",
       "type": "timerTrigger",
       "direction": "in",
-      "schedule": "0 0 */1 * * *",
-      "useMonitor": true,
+      "schedule": "0 0 */1 * * *"
     }
-  ],
-  "disabled": true
+  ]
 }
