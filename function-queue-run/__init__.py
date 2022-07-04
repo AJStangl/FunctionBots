@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import os
 import random
 import time
 from typing import Optional
@@ -80,9 +81,9 @@ def main(message: func.QueueMessage) -> None:
 
 		record.TextGenerationPrompt = processed
 
-		message_live_in_hours = 60 * 60 * 4
+		message_live_in_hours = 60 * 60 * 4 # 4 hours to live before removing message from queue
 
-		reply_probability_target = 60
+		reply_probability_target = random.randint(1, 100)
 
 		if record.InputType == "Submission":
 			repository.update_entity(record)
@@ -119,7 +120,7 @@ def main(message: func.QueueMessage) -> None:
 
 	logging.info(f":: Handling Submissions for {bot_name}")
 	start_time: float = time.time()
-	max_search_time = 120
+	max_search_time = int(os.environ["MaxSearchSeconds"])
 	for reddit_thing in chain_listing_generators(self_submissions, submissions):
 		if reddit_thing is None:
 			continue
@@ -191,6 +192,7 @@ def insert_submission_to_table(submission: Submission, user: Redditor, repositor
 		url=submission.url
 	)
 
+	logging.info(f":: Inserting Record submission {submission.id} for {user.name}")
 	entity = repository.create_if_not_exist(mapped_input)
 
 	return entity
@@ -214,6 +216,7 @@ def insert_comment_to_table(comment: Comment, user: Redditor, repository: DataRe
 		reply_probability=probability,
 		url=comment.permalink)
 
+	logging.info(f":: Inserting Record comment {comment.id} for {user.name}")
 	entity = repository.create_if_not_exist(mapped_input)
 
 	return entity

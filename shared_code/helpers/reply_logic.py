@@ -126,7 +126,7 @@ class ReplyLogic:
 		time_since_original_post: int = max(0, RedditManager.timestamp_to_hours(submission.created_utc))
 		if time_since_original_post > self.max_time_since_submission:
 			logging.info(
-				f":: Ignoring Comment to Submission with {time_since_original_post} > {self.max_time_since_submission} for {user.name}")
+				f":: Ignoring Comment to Submission with time since post: {time_since_original_post} > {self.max_time_since_submission} for {user.name}")
 			return 0
 
 		# Try to prevent going to deep into the comment forest
