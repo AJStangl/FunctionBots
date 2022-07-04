@@ -11,7 +11,7 @@ class ModelTextGenerator(object):
 	def __init__(self):
 		self.default_text_generation_parameters = {
 			'max_length': 1024,
-			'num_return_sequences': 1,
+			'num_return_sequences': 3,
 			'prompt': None,
 			'temperature': 0.8,
 			'top_k': 40,
@@ -37,7 +37,7 @@ class ModelTextGenerator(object):
 			logging.info(f'{len(output_list)} sample(s) of text generated in {duration} seconds.')
 
 			if output_list:
-				return output_list[0]
+				return max(output_list, key=len)
 
 		except Exception as e:
 			logging.error(f"{e} - Killing CUDA")

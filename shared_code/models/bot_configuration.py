@@ -42,6 +42,10 @@ class BotConfigurationManager(object):
 				result.append(bot_configuration)
 		return result
 
+	def get_bot_name_list(self) -> [str]:
+		configs: [BotConfiguration] = self.get_configuration()
+		return [bot.Name for bot in configs]
+
 	@staticmethod
 	def match_name(name: str, config: BotConfiguration) -> bool:
 		return config.Name.upper() == name.upper()

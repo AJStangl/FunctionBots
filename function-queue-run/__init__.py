@@ -88,25 +88,27 @@ def main(message: func.QueueMessage) -> None:
 
 		record.TextGenerationPrompt = processed
 
+		message_live_in_hours = 60 * 60 * 1
+
 		reply_probability_target = round(random.random() * 100)
 
 		if record.Author.upper() not in bot_name_list:
 			repository.update_entity(record)
 			queue = queue_proxy.service.get_queue_client(random.choice(all_workers), message_encode_policy=TextBase64EncodePolicy())
-			queue.send_message(json.dumps(record.as_dict()))
+			queue.send_message(json.dumps(record.as_dict()), time_to_live=message_live_in_hours)
 			logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
 			continue
 
 		if record.InputType == "Submission":
 			repository.update_entity(record)
 			queue = queue_proxy.service.get_queue_client(random.choice(all_workers), message_encode_policy=TextBase64EncodePolicy())
-			queue.send_message(json.dumps(record.as_dict()))
+			queue.send_message(json.dumps(record.as_dict()), time_to_live=message_live_in_hours)
 			logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
 			continue
 
 		if record.ReplyProbability > reply_probability_target and record.InputType == "Comment":
 			queue = queue_proxy.service.get_queue_client(random.choice(all_workers), message_encode_policy=TextBase64EncodePolicy())
-			queue.send_message(json.dumps(record.as_dict()))
+			queue.send_message(json.dumps(record.as_dict()), time_to_live=message_live_in_hours)
 			repository.update_entity(record)
 			logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
 			continue
@@ -125,11 +127,12 @@ def main(message: func.QueueMessage) -> None:
 	comments: [Comment] = subreddit.stream.comments(pause_after=0, skip_existing=False)
 
 	logging.info(f":: Handling Submissions for {bot_name}")
-	start_time = time.time()
+	start_time: float = time.time()
+	max_search_time = 60
 	for reddit_thing in submissions:
 		if reddit_thing is None:
 			break
-		if round(time.time() - start_time) > 120:
+		if round(time.time() - start_time) > max_search_time:
 			logging.info(":: Halting Collection Past 2 Minute For Submissions")
 			break
 		handle_submission(reddit_thing, user, repository, reply_logic)
@@ -139,7 +142,7 @@ def main(message: func.QueueMessage) -> None:
 	for reddit_thing in comments:
 		if reddit_thing is None:
 			break
-		if round(time.time() - start_time) > 120:
+		if round(time.time() - start_time) > max_search_time:
 			logging.info(":: Halting Collection Past 2 Minute For Comments")
 			break
 		handle_comment(reddit_thing, user, repository, reply_logic, reddit)
