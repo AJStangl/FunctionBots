@@ -14,9 +14,6 @@ class TextGenerationService:
 		self.model_generator: ModelTextGenerator = model_generator
 
 	def invoke(self, message) -> str:
-
-		logging.info(f":: Text Generation Timer Trigger Called")
-
 		incoming_message: TableRecord = TableHelper.handle_fucking_bullshit(message)
 
 		bot_name = incoming_message["RespondingBot"]

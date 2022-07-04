@@ -21,8 +21,9 @@ class RedditManager:
 		return reddit
 
 	@staticmethod
-	def timestamp_to_hours(utc_timestamp):
-		return int((datetime.datetime.utcnow() - datetime.datetime.fromtimestamp(utc_timestamp)).total_seconds() / 3600)
+	def timestamp_to_hours(utc_timestamp: int, adjustment_for_timezone=4):
+		return int((datetime.datetime.utcnow() - datetime.datetime.fromtimestamp(
+			utc_timestamp)).total_seconds() / 3600) - adjustment_for_timezone
 
 	@staticmethod
 	def chain_listing_generators(*iterables):

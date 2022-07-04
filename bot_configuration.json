@@ -63,7 +63,7 @@
     ]
   },
   {
-    "Name": "PlayHouseBot-Gpt2",
+    "Name": "PlayHouseBot-GPT2",
     "Model": "D:\\models\\large_playhouse_bot\\",
     "SubReddits": [
       "CoopAndPabloPlayHouse"

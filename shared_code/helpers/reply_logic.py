@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import datetime
 from typing import Optional
 
@@ -22,6 +23,8 @@ class ReplyLogic:
 		self._own_submission_reply_boost: float = 0.20
 		self._do_not_reply_bot_usernames = []
 		self._comment_depth_reply_penalty: float = 0.1
+		self.max_time_since_submission: int = int(os.environ["MaxTimeSinceSubmission"])
+		self.max_comments: int = int(os.environ["MaxComments"])
 
 	def calculate_reply_probability(self, redditBase: RedditBase):
 		bot_manager: BotConfigurationManager = BotConfigurationManager()
@@ -31,13 +34,28 @@ class ReplyLogic:
 		user: Redditor = self._praw.user.me()
 
 		if isinstance(redditBase, Submission):
-			return 101
+			return self._handle_submission_logic(redditBase, user)
 
 		if isinstance(redditBase, Message):
 			return 101
 
 		if isinstance(redditBase, Comment):
 			return self._handle_reply_comment_logic(redditBase, bot_names, user)
+
+	def _handle_submission_logic(self, submission: Submission, reddit_user: Redditor) -> float:
+		# Ignore when submission is the same for the submitter and responder
+		if reddit_user.name == getattr(submission.author, 'name', ''):
+			return 0
+
+		max_time_since_submission: int = self.max_time_since_submission
+		time_since_original_post: int = max(0, RedditManager.timestamp_to_hours(submission.created_utc))
+		if time_since_original_post > max_time_since_submission:
+			logging.info(
+				f":: Ignoring Submission with {time_since_original_post} > {max_time_since_submission} for {reddit_user.name}")
+			return 0
+
+		else:
+			return 101
 
 	def _handle_reply_comment_logic(self, comment: Comment, bot_names: [str], user: Redditor) -> float:
 		import logging
@@ -100,16 +118,15 @@ class ReplyLogic:
 			return 0
 
 		# Try to prevent exceeding 250 comments for a submission
-		max_comments: int = 250
-		if submission.num_comments > max_comments:
-			logging.info(f":: Ignoring Comment to Submission with {max_comments} comments")
+		if submission.num_comments > self.max_comments:
+			logging.info(f":: Ignoring Comment to Submission with {self.max_comments} comments")
 			return 0
 
 		# Try to ensure the max skew time from the submission is in range to reply
-		max_time_since_submission: int = 12
-		time_since_original_post: int = max(0, RedditManager.timestamp_to_hours(submission.created_utc) - 4)
-		if time_since_original_post > max_time_since_submission:
-			logging.info(f":: Ignoring Comment to Submission with {time_since_original_post} > {max_time_since_submission} for {user.name}")
+		time_since_original_post: int = max(0, RedditManager.timestamp_to_hours(submission.created_utc))
+		if time_since_original_post > self.max_time_since_submission:
+			logging.info(
+				f":: Ignoring Comment to Submission with {time_since_original_post} > {self.max_time_since_submission} for {user.name}")
 			return 0
 
 		# Try to prevent going to deep into the comment forest
@@ -151,7 +168,8 @@ class ReplyLogic:
 
 		reply_probability = min(base_probability, 1)
 
-		age_of_submission = (datetime.utcnow() - datetime.utcfromtimestamp(submission_created_utc)).total_seconds() / 3600
+		age_of_submission = (datetime.utcnow() - datetime.utcfromtimestamp(
+			submission_created_utc)).total_seconds() / 3600
 
 		rate_of_decay = max(0, 1 - (age_of_submission / 24))
 

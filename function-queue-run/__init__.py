@@ -8,6 +8,7 @@ import time
 import azure.functions as func
 from azure.storage.queue import TextBase64EncodePolicy
 from praw.models import Submission
+from praw.models.reddit.base import RedditBase
 from praw.reddit import Redditor, Reddit, Comment
 from shared_code.database.instance import TableRecord
 from shared_code.database.repository import DataRepository
@@ -29,10 +30,6 @@ def main(message: func.QueueMessage) -> None:
 
 	queue_proxy: QueueServiceProxy = QueueServiceProxy()
 
-	bot_configuration_manager: BotConfigurationManager = BotConfigurationManager()
-
-	bot_name_list = [bot.Name.upper() for bot in bot_configuration_manager.get_configuration()]
-
 	tagging_mixin: TaggingMixin = TaggingMixin()
 
 	message_json = message.get_body().decode('utf-8')
@@ -43,7 +40,7 @@ def main(message: func.QueueMessage) -> None:
 
 	logging.info(f":: Starting Main Routine For {bot_name}")
 
-	reddit = reddit_helper.get_praw_instance_for_bot(bot_name)
+	reddit: Reddit = reddit_helper.get_praw_instance_for_bot(bot_name)
 
 	reply_service: ReplyService = ReplyService()
 
@@ -89,20 +86,23 @@ def main(message: func.QueueMessage) -> None:
 
 		if record.InputType == "Submission":
 			repository.update_entity(record)
-			queue = queue_proxy.service.get_queue_client(random.choice(all_workers), message_encode_policy=TextBase64EncodePolicy())
+			queue = queue_proxy.service.get_queue_client(random.choice(all_workers),
+														 message_encode_policy=TextBase64EncodePolicy())
 			queue.send_message(json.dumps(record.as_dict()), time_to_live=message_live_in_hours)
 			logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
 			continue
 
 		if record.ReplyProbability > reply_probability_target and record.InputType == "Comment":
-			queue = queue_proxy.service.get_queue_client(random.choice(all_workers), message_encode_policy=TextBase64EncodePolicy())
+			queue = queue_proxy.service.get_queue_client(random.choice(all_workers),
+														 message_encode_policy=TextBase64EncodePolicy())
 			queue.send_message(json.dumps(record.as_dict()), time_to_live=message_live_in_hours)
 			repository.update_entity(record)
 			logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
 			continue
 
 		else:
-			logging.info(f":: Ignoring {record.InputType} for {record.RespondingBot} has a Probability of {record.ReplyProbability} but needs {reply_probability_target}")
+			logging.info(
+				f":: Ignoring {record.InputType} for {record.RespondingBot} has a Probability of {record.ReplyProbability} but needs {reply_probability_target}")
 			record.Status = 2
 			repository.update_entity(record)
 			continue
@@ -110,31 +110,35 @@ def main(message: func.QueueMessage) -> None:
 	####################################################################################################################
 
 	logging.info(f":: Collecting Submissions for {bot_name}")
+	self_submissions: [Submission] = reddit.redditor(bot_name).submissions.new(limit=20)
 	submissions: [Submission] = subreddit.stream.submissions(pause_after=0, skip_existing=False)
 
 	logging.info(f":: Collecting Comments for {bot_name}")
+	self_comments: [Comment] = reddit.redditor(bot_name).comments.new(limit=20)
 	comments: [Comment] = subreddit.stream.comments(pause_after=0, skip_existing=False)
 
 	logging.info(f":: Handling Submissions for {bot_name}")
 	start_time: float = time.time()
 	max_search_time = 120
-	for reddit_thing in submissions:
+	for reddit_thing in chain_listing_generators(self_submissions, submissions):
 		if reddit_thing is None:
-			break
+			continue
+
 		if round(time.time() - start_time) > max_search_time:
 			logging.info(f":: Halting Collection Past {max_search_time} seconds For Submissions")
 			break
-		handle_submission(reddit_thing, user, repository, reply_logic)
+		insert_submission_to_table(reddit_thing, user, repository, reply_logic)
 
 	start_time = time.time()
 	logging.info(f":: Handling Incoming Comments for {bot_name}")
-	for reddit_thing in comments:
+	for reddit_thing in chain_listing_generators(self_comments, comments):
 		if reddit_thing is None:
-			break
+			continue
+
 		if round(time.time() - start_time) > max_search_time:
 			logging.info(f":: Halting Collection Past {max_search_time} seconds For Comments")
 			break
-		handle_comment(reddit_thing, user, repository, reply_logic, reddit)
+		insert_comment_to_table(reddit_thing, user, repository, reply_logic)
 	####################################################################################################################
 
 	logging.info(f":: Initializing Reply After Main Routine for {bot_name}")
@@ -164,28 +168,27 @@ def process_input(record: TableRecord, instance: Reddit, tagging_mixin: TaggingM
 		return prompt
 
 
-def handle_submission(thing: Submission, user: Redditor, repository: DataRepository, reply_probability: ReplyLogic) -> Optional[TableRecord]:
-
+def insert_submission_to_table(submission: Submission, user: Redditor, repository: DataRepository, reply_probability: ReplyLogic) -> Optional[TableRecord]:
 	# Ignore when submission is the same for the submitter and responder
-	if user.name == getattr(thing.author, 'name', ''):
+	if user.name == getattr(submission.author, 'name', ''):
 		return None
 
-	if timestamp_to_hours(thing.created_utc) > 16:
-		logging.debug(f":: Submission to old {thing.id} for {user.name}")
-		return None
+	probability = reply_probability.calculate_reply_probability(submission)
 
-	probability = reply_probability.calculate_reply_probability(thing)
+	if probability == 0:
+		logging.info(f":: Reply Probability for {submission.id} is {probability} for bot - {user.name}")
+		return None
 
 	mapped_input: TableRecord = TableHelper.map_base_to_message(
-		reddit_id=thing.id,
-		sub_reddit=thing.subreddit.display_name,
+		reddit_id=submission.id,
+		sub_reddit=submission.subreddit.display_name,
 		input_type="Submission",
-		time_in_hours=timestamp_to_hours(thing.created),
-		submitted_date=thing.created,
-		author=getattr(thing.author, 'name', ''),
+		time_in_hours=timestamp_to_hours(submission.created),
+		submitted_date=submission.created,
+		author=getattr(submission.author, 'name', ''),
 		responding_bot=user.name,
 		reply_probability=probability,
-		url=thing.url
+		url=submission.url
 	)
 
 	entity = repository.create_if_not_exist(mapped_input)
@@ -193,12 +196,11 @@ def handle_submission(thing: Submission, user: Redditor, repository: DataReposit
 	return entity
 
 
-def handle_comment(comment: Comment, user: Redditor, repository: DataRepository, reply_probability: ReplyLogic, instance: Reddit) -> Optional[TableRecord]:
-
+def insert_comment_to_table(comment: Comment, user: Redditor, repository: DataRepository, reply_probability: ReplyLogic) -> Optional[TableRecord]:
 	probability = reply_probability.calculate_reply_probability(comment)
 
 	if probability == 0:
-		logging.info(f":: Reply Probability for {comment.id} is 0 - {user.name}")
+		logging.info(f":: Reply Probability for {comment.id} is {probability} for bot - {user.name}")
 		return None
 
 	mapped_input: TableRecord = TableHelper.map_base_to_message(

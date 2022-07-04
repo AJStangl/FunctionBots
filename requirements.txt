@@ -8,4 +8,5 @@ azure-functions
 azure-storage-queue
 azure-data-tables
 aiohttp~=3.8.1
-sqlalchemy~=1.4.37
+sqlalchemy
+pynvml

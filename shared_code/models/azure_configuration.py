@@ -15,7 +15,6 @@ class FunctionAppConfiguration(object):
 	def __init__(self):
 		self.account_name: str = os.environ["AccountName"]
 		self.account_key: str = os.environ["AccountKey"]
-		self.table_endpoint: str = os.environ["TableEndpoint"]
 		self.queue_endpoint: str = os.environ["QueueEndpoint"]
 		self.connection_string: str = os.environ["ConnectionString"]
 		self.is_emulated: bool = os.environ["IsEmulated"] == "True"
