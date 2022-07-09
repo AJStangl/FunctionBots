@@ -3,8 +3,8 @@ import logging
 
 from azure.core.paging import ItemPaged
 from azure.storage.queue import QueueServiceClient, QueueClient, QueueMessage
-from praw import Reddit
-from praw.models import Submission, Comment
+from asyncpraw import Reddit
+from asyncpraw.models import Submission, Comment
 
 from shared_code.database.instance import TableRecord
 from shared_code.helpers.record_helper import TableHelper
@@ -18,13 +18,12 @@ class ReplyService:
 	def __init__(self):
 		self.logging = logging.getLogger(__name__)
 		self.bad_key_words = ["removed", "nouniqueideas007", "ljthefa"]
-		self.tagging: TaggingMixin = TaggingMixin()
 		self.reddit_manager: RedditManager = RedditManager()
 		self.queue_service: QueueServiceClient = QueueServiceProxy().service
 		self.repository: DataRepository = DataRepository()
 		self.queue_client: QueueClient = self.queue_service.get_queue_client("reply-queue")
 
-	def invoke(self) -> None:
+	async def invoke(self) -> None:
 		self.logging.info(f":: Initializing Reply Processing")
 		if len(self.queue_client.peek_messages()) == 0:
 			self.logging.info(f":: No New Messages for queue")
@@ -36,12 +35,12 @@ class ReplyService:
 			self.logging.info(f":: Exception Occurred While Handling Retrieval Of Messages. {e}")
 			return None
 
-		self.handle_messages(messages)
+		await self.handle_messages(messages)
 		logging.info(f":: Reply Process Complete")
 
 		return None
 
-	def handle_messages(self, messages):
+	async def handle_messages(self, messages):
 		manager: RedditManager = RedditManager()
 
 		for message in messages:
@@ -55,9 +54,11 @@ class ReplyService:
 
 			response: str = record["TextGenerationResponse"]
 
-			extract: dict = self.tagging.extract_reply_from_generated_text(prompt, response)
-
 			reddit: Reddit = manager.get_praw_instance_for_bot(record["RespondingBot"])
+
+			tagging: TaggingMixin = TaggingMixin(reddit)
+
+			extract: dict = tagging.extract_reply_from_generated_text(prompt, response)
 
 			entity: TableRecord = self.repository.get_entity_by_id(record["Id"])
 
@@ -84,7 +85,7 @@ class ReplyService:
 					continue
 
 			if entity.InputType == "Submission":
-				sub_instance: Submission = reddit.submission(id=entity.RedditId)
+				sub_instance: Submission = await reddit.submission(id=entity.RedditId)
 				logging.info(f":: Sending Out Reply To Submission - {entity.RedditId}")
 				sub_instance.reply(body)
 				entity.HasResponded = True
@@ -96,7 +97,7 @@ class ReplyService:
 
 			if entity.InputType == "Comment":
 				logging.info(f":: Sending Out Reply To Comment - {entity.RedditId}")
-				comment_instance: Comment = reddit.comment(id=entity.RedditId)
+				comment_instance: Comment = await reddit.comment(id=entity.RedditId)
 				comment_instance.reply(body)
 				entity.HasResponded = True
 				entity.Status = 4

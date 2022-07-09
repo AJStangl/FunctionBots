@@ -6,7 +6,7 @@ from shared_code.models.bot_configuration import BotConfigurationManager, BotCon
 from shared_code.services.new_submission_service import SubmissionService
 
 
-def main(submissionTimer: func.TimerRequest) -> None:
+async def main(submissionTimer: func.TimerRequest) -> None:
 	logging.info(f":: Submission Creation Trigger Called")
 	submission_service: SubmissionService = SubmissionService()
 	manager: BotConfigurationManager = BotConfigurationManager()
@@ -14,5 +14,9 @@ def main(submissionTimer: func.TimerRequest) -> None:
 	random.shuffle(configs)
 
 	for bot_config in configs:
-		submission_service.invoke(bot_configuration=bot_config)
+		successful: bool = await submission_service.invoke(bot_configuration=bot_config)
+		if successful:
+			break
+		else:
+			continue
 	return None

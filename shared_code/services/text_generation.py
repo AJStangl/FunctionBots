@@ -26,7 +26,7 @@ class TextGenerationService:
 
 		prompt = incoming_message["TextGenerationPrompt"]
 
-		result = self.model_generator.generate_text(bot_name, prompt)
+		result = self.model_generator.generate_text(bot_name, prompt, num_text_generations=1)
 
 		entity.TextGenerationPrompt = prompt
 

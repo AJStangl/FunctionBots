@@ -1,8 +1,10 @@
 import logging
 import os
 import random
-from praw import Reddit
-from praw.models import Submission
+from typing import Optional
+
+from asyncpraw import Reddit
+from asyncpraw.models import Submission, Subreddit
 
 from shared_code.generators.text.model_text_generator import ModelTextGenerator
 from shared_code.helpers.image_scrapper import ImageScrapper
@@ -16,22 +18,26 @@ class SubmissionService:
 		self.bot_configuration_manager = BotConfigurationManager()
 		self.generator: ModelTextGenerator = ModelTextGenerator()
 		self.reddit_helper: RedditManager = RedditManager()
-		self.tagging: TaggingMixin = TaggingMixin()
 		self.scrapper: ImageScrapper = ImageScrapper()
 		self.submission_interval: int = int(os.environ["SubmissionInterval"])
+		self.tagging: Optional[TaggingMixin] = None
 
-	def invoke(self, bot_configuration: BotConfiguration):
+	async def invoke(self, bot_configuration: BotConfiguration) -> bool:
 		logging.info(f":: Invoking Submission Service For {bot_configuration.Name}")
 		instance: Reddit = self.reddit_helper.get_praw_instance_for_bot(bot_configuration.Name)
-		last_posted_sub: Submission = list(instance.user.me().submissions.new())[0]
+		self.tagging: TaggingMixin = TaggingMixin(reddit=instance)
+
+		last_posted_sub: Submission = await self.get_last_posted_submission(instance)
+
 		last_created = RedditManager.timestamp_to_hours(last_posted_sub.created_utc)
+
 		if last_created < self.submission_interval:
 			logging.info(f":: Nice try - Time Since Last For Is {last_posted_sub} for {bot_configuration.Name} is less than {self.submission_interval}")
-			return
+			return False
 
 		logging.info(f"Time Since Last Submission to {bot_configuration.SubReddits[0]} is {last_created}")
-		image_gen_prob = random.randint(1, 2)
-		target_sub = bot_configuration.SubReddits[0]
+		image_gen_prob: int = random.randint(1, 2)
+		target_sub: str = bot_configuration.SubReddits[0]
 		logging.info(f":: Preparing Submission To {target_sub} for {bot_configuration.Name}")
 		prompt = self.tagging.get_random_new_submission_tag(subreddit=target_sub)
 		result = self.generator.generate_text(bot_username=bot_configuration.Name, prompt=prompt, default_cuda=True, num_text_generations=1)
@@ -40,7 +46,7 @@ class SubmissionService:
 		logging.info(f":: Attempting Submission Post to {target_sub} for {bot_configuration.Name}")
 		if extracted_prompt is None:
 			logging.info(f":: Prompt is empty for {bot_configuration.Name}")
-			return
+			return False
 
 		if image_gen_prob == 1:
 			image_url = self.scrapper.get_image_post(bot_configuration.Name, result)
@@ -51,17 +57,24 @@ class SubmissionService:
 			try:
 				logging.info(f":: Sending Image Post To {target_sub} for {bot_configuration.Name}")
 				logging.info(f":: The prompt is: {extracted_prompt} for {bot_configuration.Name} to {target_sub}")
-				sub = instance.subreddit(target_sub)
-				sub.submit(**new_prompt)
-				return
+				sub: Subreddit = await instance.subreddit(target_sub)
+				await sub.submit(**new_prompt)
+				return True
 			except Exception as e:
 				logging.info(f":: Process Failed posting Image {e}")
-				return
+				return False
 		else:
 			try:
 				logging.info(f":: Sending Text Post To {target_sub} for {bot_configuration.Name}")
-				sub = instance.subreddit(target_sub)
-				sub.submit(**extracted_prompt)
+				sub: Subreddit = await instance.subreddit(target_sub)
+				await sub.submit(**extracted_prompt)
 			except Exception as e:
 				logging.info(f":: Process Failed {e}")
-				return
+				return False
+
+	async def get_last_posted_submission(self, instance: Reddit) -> Submission:
+		me = await instance.user.me()
+		async for submission in me.submissions.new():
+			submission: Submission = await submission.load()
+			return submission
+

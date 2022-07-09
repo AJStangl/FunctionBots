@@ -37,6 +37,21 @@ class DataRepository:
 		finally:
 			session.close()
 
+	def search_for_unsent_replies(self, bot_name: str):
+		session = Session(engine)
+		try:
+			entity = session.execute(
+				select(TableRecord)
+					.where(TableRecord.Status == 1)
+					.where(TableRecord.TextGenerationResponse != '')
+					.where(TableRecord.HasResponded is False)
+					.where(TableRecord.RespondingBot == bot_name)
+					.order_by(desc(TableRecord.ContentDateSubmitted)))\
+				.all()
+			return entity
+		finally:
+			session.close()
+
 	def search_for_pending(self, input_type: str, bot_name: str, limit: int = 10):
 		session = Session(engine)
 		try:

@@ -1,7 +1,7 @@
 import logging
 import datetime
 
-from praw import Reddit
+from asyncpraw import Reddit
 
 from shared_code.models.bot_configuration import BotConfigurationManager
 

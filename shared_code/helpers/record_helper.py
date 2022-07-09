@@ -1,6 +1,8 @@
 import base64
 import datetime
 import json
+import logging
+
 import azure.functions as func
 from shared_code.database.instance import TableRecord
 
@@ -33,7 +35,8 @@ class TableHelper:
 		try:
 			incoming_message: TableRecord = json.loads(base64.b64decode(message.content))
 			return incoming_message
-		except Exception:
+		except Exception as e:
+			logging.debug(f"{e}")
 			incoming_message: TableRecord = json.loads(message.content)
 			return incoming_message
 
@@ -42,5 +45,5 @@ class TableHelper:
 		try:
 			incoming_message: TableRecord = json.loads(json.dumps(message.get_json()))
 			return incoming_message
-		except:
-			print("Fucking bullshit man")
+		except Exception as e:
+			logging.info(f":: Fucking bullshit man {e}")

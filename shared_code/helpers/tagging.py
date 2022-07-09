@@ -1,10 +1,13 @@
 import codecs
 import logging
 import re
+from typing import Union
 
+import asyncpraw
 import ftfy
-from praw.models import Submission, Comment
-from praw.models.reddit.base import RedditBase
+from asyncpraw import Reddit
+from asyncpraw.models import Submission, Comment
+from asyncpraw.models.reddit.base import RedditBase
 
 
 class TaggingMixin:
@@ -25,7 +28,10 @@ class TaggingMixin:
 
 	_end_tag = '<|'
 
-	def collate_tagged_comment_history(self, loop_thing: RedditBase, to_level=12, use_reply_sense=True):
+	def __init__(self, reddit: Reddit):
+		self.reddit_instance = reddit
+
+	async def collate_tagged_comment_history(self, loop_thing: RedditBase, to_level=12, use_reply_sense=True) -> str:
 		"""
 		Loop backwards (upwards in reddit terms) from the praw_thing through the comment up x times,
 		tagging the content text in the same way as the training data is
@@ -40,7 +46,7 @@ class TaggingMixin:
 		while loop_thing and counter < to_level:
 
 			if isinstance(loop_thing, Submission):
-				tagged_text = self.tag_submission(loop_thing, use_reply_sense)
+				tagged_text = await self.tag_submission(loop_thing, use_reply_sense)
 				prefix = tagged_text + prefix
 
 				# can't go any higher than a submission, so break the loop
@@ -57,7 +63,7 @@ class TaggingMixin:
 
 		return prefix
 
-	def get_reply_tag(self, thing: RedditBase, bot_username, use_reply_sense=True):
+	async def get_reply_tag(self, thing: RedditBase, bot_username, use_reply_sense=True) -> str:
 		"""
 		Get the reply tag to use.
 		The model will generate text after this reply tag.
@@ -66,17 +72,26 @@ class TaggingMixin:
 		"""
 		try:
 			if use_reply_sense:
-				parent = thing.parent()
 				if isinstance(thing, Comment):
-					# Need this praw_Comment check for message replies
-					if thing.submission:
-						# The submission was by the bot so use special tag
-						if thing.submission.author.name.lower() == bot_username.lower():
-							return '<|soopr|>'
-					if parent is not None:
-						# if the parent's parent was by the author bot, use the own content tag
-						if parent.author.name.lower() == bot_username.lower():
-							return '<|soocr|>'
+					await thing.load()
+
+					submission = await self.reddit_instance.submission(id=thing.submission.id)
+					await submission.load()
+
+					# If the submission is the same as the responding bot use the <|soopr|> tag
+					if submission.author.name.lower() == thing.author.name.lower():
+						return '<|soopr|>'
+
+					parent_of_parent = await self.get_parent_of_parent(comment=thing)
+					is_parent_or_parent_author: bool = parent_of_parent.author.name.lower() == bot_username.lower()
+
+					# if the parent's parent was by the author bot, use the own content tag
+					if is_parent_or_parent_author:
+						return '<|soocr|>'
+
+				if isinstance(thing, Submission):
+					return self._reply_start_tag
+
 		except Exception as e:
 			logging.info(e)
 			pass
@@ -84,7 +99,7 @@ class TaggingMixin:
 		# It's just a straight reply
 		return self._reply_start_tag
 
-	def get_random_new_submission_tag(self, subreddit, use_reply_sense=True):
+	def get_random_new_submission_tag(self, subreddit: str, use_reply_sense=True):
 		import random
 		# random is already seeded in reddit_io init
 		random_value = random.random()
@@ -105,59 +120,54 @@ class TaggingMixin:
 
 		return tag + self._title_start_tag
 
-	def tag_submission(self, thing: Submission, use_reply_sense=True):
+	async def tag_submission(self, submission: Submission, use_reply_sense=True):
 		tagged_text = ""
+		await submission.load()
 
-		if thing.is_self:
+		if submission.is_self:
 			tagged_text += "<|soss"
 		else:
 			tagged_text += "<|sols"
 
 		if use_reply_sense:
-			tagged_text += f" r/{thing.subreddit}|>"
+			tagged_text += f" r/{submission.subreddit}|>"
 		else:
 			tagged_text += "|>"
 
 		# prepend the tagged text
-		if thing.is_self:
+		if submission.is_self:
 
-			selftext = thing.selftext
+			selftext = submission.selftext
 
-			if hasattr(thing, 'poll_data'):
-				# The submission has a poll - extract that data
-				for option in thing.poll_data.options:
-					# Replicate unordered list markdown,
-					# appeding it to the end of the selftext
+			if hasattr(submission, 'poll_data'):
+				for option in submission.poll_data.options:
 					selftext += f" - {option.text}"
 
 			# selftext submission
-			tagged_text += f"<|sot|>{thing.title}<|eot|><|sost|>{selftext}<|eost|>"
+			tagged_text += f"<|sot|>{submission.title}<|eot|><|sost|>{selftext}<|eost|>"
 
 		else:
 			# it's a link submission
-			tagged_text += f"<|sot|>{thing.title}<|eot|><|sol|><|eol|>"
+			tagged_text += f"<|sot|>{submission.title}<|eot|><|sol|><|eol|>"
 
 		return tagged_text
 
-	def tag_comment(self, thing, use_reply_sense=True):
+	async def tag_comment(self, comment: Comment, use_reply_sense=True):
 		if use_reply_sense:
+			submission_id = comment.submission.id
+			submission: Submission = await self.reddit_instance.submission(id=submission_id)
+			is_same_author: bool = submission.author.name == comment.author.name
+			if is_same_author:
+				return f'<|soopr u/{comment.author}|>{comment.body}<|eoopr|>'
 
-			if thing.submission.author.name == thing.author:
-				return f'<|soopr u/{thing.author}|>{thing.body}<|eoopr|>'
-
-			parent_parent = None
-			try:
-				parent_parent = thing.parent().parent()
-				if parent_parent.author.name == thing.author:
-					return f'<|soocr u/{thing.author}|>{thing.body}<|eoocr|>'
-			except:
-				# Exception will be raised if there are not two parents
-				pass
-
-			return f'<|sor u/{thing.author}|>{thing.body}<|eor|>'
-
+			parent_parent = await self.get_parent_of_parent(comment)
+			parent_parent_author: bool = parent_parent.author.name == comment.author.name
+			if parent_parent_author:
+				return f'<|soocr u/{comment.author}|>{comment.body}<|eoocr|>'
+			else:
+				return f'<|sor u/{comment.author}|>{comment.body}<|eor|>'
 		else:
-			return f'<|sor|>{thing.body}<|eor|>'
+			return f'<|sor|>{comment.body}<|eor|>'
 
 	def tag_message(self, thing, use_reply_sense=True):
 
@@ -273,3 +283,30 @@ class TaggingMixin:
 	def remove_username_mentions_from_string(self, string: str, username: str) -> str:
 		regex = re.compile(fr"u\/{username}(?!\|\>)", re.IGNORECASE)
 		return regex.sub('', string)
+
+	async def get_parent_of_parent(self, comment: Union["Comment", "asyncpraw.models.Submission"]) -> Union["Comment", "asyncpraw.models.Submission"]:
+		# Don't get the parent of a submission
+		if isinstance(comment, Submission):
+			return comment
+
+		# First get the parent.
+		parent = await comment.parent()
+		# If it's a submission then return the parent
+		if isinstance(parent, Submission):
+			return parent
+
+		# Force re-fresh to load parent
+		await parent.refresh()
+		if parent:
+			try:
+				parent_parent = await parent.parent()
+				# Check if parent is not a submission and refresh it.
+				if parent_parent and not isinstance(parent_parent, Submission):
+					await parent_parent.refresh()
+					return parent_parent
+				else:
+					# Otherwise return the submission
+					return parent_parent
+			except Exception as e:
+				logging.info(f":: Error getting parent of parent {e}")
+
