@@ -41,69 +41,74 @@ class ReplyService:
 		return None
 
 	async def handle_messages(self, messages):
-		manager: RedditManager = RedditManager()
+			manager: RedditManager = RedditManager()
+			for message in messages:
+				self.logging.info(f":: Handling Messages From Iterator")
 
-		for message in messages:
-			self.logging.info(f":: Handling Messages From Iterator")
+				self.queue_client.delete_message(message)
 
-			self.queue_client.delete_message(message)
+				record: TableRecord = TableHelper.handle_incoming_message(message)
 
-			record: TableRecord = TableHelper.handle_incoming_message(message)
+				prompt: str = record["TextGenerationPrompt"]
 
-			prompt: str = record["TextGenerationPrompt"]
+				response: str = record["TextGenerationResponse"]
 
-			response: str = record["TextGenerationResponse"]
+				try:
+					reddit: Reddit = manager.get_praw_instance_for_bot(record["RespondingBot"])
 
-			reddit: Reddit = manager.get_praw_instance_for_bot(record["RespondingBot"])
+					tagging: TaggingMixin = TaggingMixin(reddit)
 
-			tagging: TaggingMixin = TaggingMixin(reddit)
+					extract: dict = tagging.extract_reply_from_generated_text(prompt, response)
 
-			extract: dict = tagging.extract_reply_from_generated_text(prompt, response)
+					entity: TableRecord = self.repository.get_entity_by_id(record["Id"])
 
-			entity: TableRecord = self.repository.get_entity_by_id(record["Id"])
+					body = None
+					try:
+						body = extract['body']
+					except Exception as e:
+						continue
 
-			body = None
-			try:
-				body = extract['body']
-			except Exception as e:
-				continue
+					if record is None:
+						continue
 
-			if record is None:
-				continue
+					if body is None:
+						logging.info(f":: No Body Present for message")
+						continue
 
-			if body is None:
-				logging.info(f":: No Body Present for message")
-				continue
+					for item in self.bad_key_words:
+						if body in item:
+							logging.info(f"Response has negative keyword - {item}")
+							entity.HasResponded = True
+							entity.Status = 3
+							entity.DateTimeSubmitted = str(datetime.datetime.now())
+							self.repository.update_entity(entity)
+							continue
 
-			for item in self.bad_key_words:
-				if body in item:
-					logging.info(f"Response has negative keyword - {item}")
-					entity.HasResponded = True
-					entity.Status = 3
-					entity.DateTimeSubmitted = str(datetime.datetime.now())
-					self.repository.update_entity(entity)
-					continue
+					if entity.InputType == "Submission":
+						sub_instance: Submission = await reddit.submission(id=entity.RedditId)
+						logging.info(f":: Sending Out Reply To Submission - {entity.RedditId}")
+						await sub_instance.reply(body)
+						entity.HasResponded = True
+						entity.Status = 4
+						entity.DateTimeSubmitted = str(datetime.datetime.now())
+						entity.TextGenerationResponse = body
+						self.repository.update_entity(entity)
+						continue
 
-			if entity.InputType == "Submission":
-				sub_instance: Submission = await reddit.submission(id=entity.RedditId)
-				logging.info(f":: Sending Out Reply To Submission - {entity.RedditId}")
-				await sub_instance.reply(body)
-				entity.HasResponded = True
-				entity.Status = 4
-				entity.DateTimeSubmitted = str(datetime.datetime.now())
-				entity.TextGenerationResponse = body
-				self.repository.update_entity(entity)
-				continue
+					if entity.InputType == "Comment":
+						logging.info(f":: Sending Out Reply To Comment - {entity.RedditId}")
+						comment_instance: Comment = await reddit.comment(id=entity.RedditId)
+						await comment_instance.reply(body)
+						entity.HasResponded = True
+						entity.Status = 4
+						entity.DateTimeSubmitted = str(datetime.datetime.now())
+						entity.TextGenerationResponse = body
+						self.repository.update_entity(entity)
+						continue
 
-			if entity.InputType == "Comment":
-				logging.info(f":: Sending Out Reply To Comment - {entity.RedditId}")
-				comment_instance: Comment = await reddit.comment(id=entity.RedditId)
-				await comment_instance.reply(body)
-				entity.HasResponded = True
-				entity.Status = 4
-				entity.DateTimeSubmitted = str(datetime.datetime.now())
-				entity.TextGenerationResponse = body
-				self.repository.update_entity(entity)
-				continue
+				except Exception as e:
+					logging.error(e)
+				finally:
+					await reddit.close()
 
-			await reddit.close()
+

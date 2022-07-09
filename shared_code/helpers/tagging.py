@@ -6,7 +6,7 @@ from typing import Union
 import asyncpraw
 import ftfy
 from asyncpraw import Reddit
-from asyncpraw.models import Submission, Comment
+from asyncpraw.models import Submission, Comment, Redditor
 from asyncpraw.models.reddit.base import RedditBase
 
 
@@ -42,7 +42,7 @@ class TaggingMixin:
 		"""
 		counter = 0
 		prefix = ''
-
+		await loop_thing.load()
 		while loop_thing and counter < to_level:
 
 			if isinstance(loop_thing, Submission):
@@ -54,10 +54,9 @@ class TaggingMixin:
 
 			elif isinstance(loop_thing, Comment):
 				# It's a comment
-				tagged_text = self.tag_comment(loop_thing, use_reply_sense)
+				tagged_text = await self.tag_comment(loop_thing, use_reply_sense)
 				prefix = tagged_text + prefix
-
-				loop_thing = loop_thing.parent()
+				loop_thing = await loop_thing.parent()
 
 			counter += 1
 
@@ -71,29 +70,29 @@ class TaggingMixin:
 		*This section is customisable for your own bot and how it has been finetuned*
 		"""
 		try:
-			if use_reply_sense:
-				if isinstance(thing, Comment):
-					await thing.load()
+			if isinstance(thing, Comment):
+				comment = thing
+				await comment.load()
+				submission_id = comment.submission.id
+				submission = await self.reddit_instance.submission(id=submission_id, fetch=True)
 
-					submission = await self.reddit_instance.submission(id=thing.submission.id)
-					await submission.load()
+				await submission.load()
 
-					# If the submission is the same as the responding bot use the <|soopr|> tag
-					if submission.author.name.lower() == thing.author.name.lower():
-						return '<|soopr|>'
+				# If the submission is the same as the responding bot use the <|soopr|> tag
+				if submission.author == comment.author:
+					return '<|soopr|>'
 
-					parent_of_parent = await self.get_parent_of_parent(comment=thing)
-					is_parent_or_parent_author: bool = parent_of_parent.author.name.lower() == bot_username.lower()
+				parent_of_parent = await self.get_parent_of_parent(comment)
 
-					# if the parent's parent was by the author bot, use the own content tag
-					if is_parent_or_parent_author:
-						return '<|soocr|>'
+				# if the parent's parent was by the author bot, use the own content tag
+				if parent_of_parent.author == bot_username:
+					return '<|soocr|>'
 
-				if isinstance(thing, Submission):
-					return self._reply_start_tag
+			if isinstance(thing, Submission):
+				return self._reply_start_tag
 
 		except Exception as e:
-			logging.info(e)
+			logging.info(f":: {e} in get_reply_tag")
 			pass
 
 		# It's just a straight reply
@@ -153,20 +152,26 @@ class TaggingMixin:
 		return tagged_text
 
 	async def tag_comment(self, comment: Comment, use_reply_sense=True):
-		if use_reply_sense:
+		try:
 			submission_id = comment.submission.id
 			submission: Submission = await self.reddit_instance.submission(id=submission_id)
-			is_same_author: bool = submission.author.name == comment.author.name
-			if is_same_author:
+			await submission.load()
+			await comment.load()
+
+			if submission.author.name == comment.author.name:
 				return f'<|soopr u/{comment.author}|>{comment.body}<|eoopr|>'
 
 			parent_parent = await self.get_parent_of_parent(comment)
-			parent_parent_author: bool = parent_parent.author.name == comment.author.name
-			if parent_parent_author:
+
+			await parent_parent.load()
+
+			if parent_parent.author.name == comment.author.name:
 				return f'<|soocr u/{comment.author}|>{comment.body}<|eoocr|>'
 			else:
 				return f'<|sor u/{comment.author}|>{comment.body}<|eor|>'
-		else:
+
+		except Exception as e:
+			logging.error(f"{e} in tag_comment")
 			return f'<|sor|>{comment.body}<|eor|>'
 
 	def tag_message(self, thing, use_reply_sense=True):
@@ -284,13 +289,15 @@ class TaggingMixin:
 		regex = re.compile(fr"u\/{username}(?!\|\>)", re.IGNORECASE)
 		return regex.sub('', string)
 
-	async def get_parent_of_parent(self, comment: Union["Comment", "asyncpraw.models.Submission"]) -> Union["Comment", "asyncpraw.models.Submission"]:
+	async def get_parent_of_parent(self, comment: RedditBase) -> RedditBase:
 		# Don't get the parent of a submission
 		if isinstance(comment, Submission):
+			await comment.load()
 			return comment
 
 		# First get the parent.
 		parent = await comment.parent()
+
 		# If it's a submission then return the parent
 		if isinstance(parent, Submission):
 			return parent

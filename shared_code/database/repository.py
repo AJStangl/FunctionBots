@@ -27,7 +27,7 @@ class DataRepository:
 		try:
 			entity = session.get(TableRecord, record.Id)
 			if entity:
-				return entity
+				return None
 			else:
 				session.add(record)
 				session.commit()

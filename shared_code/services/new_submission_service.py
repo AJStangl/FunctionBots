@@ -26,22 +26,20 @@ class SubmissionService:
 		logging.info(f":: Invoking Submission Service For {bot_configuration.Name}")
 		instance: Reddit = self.reddit_helper.get_praw_instance_for_bot(bot_configuration.Name)
 		self.tagging: TaggingMixin = TaggingMixin(instance)
-
-		last_posted_sub: Submission = await self.get_last_posted_submission(instance)
-		if last_posted_sub is None:
-			last_created = 2
-		else:
-			last_created = RedditManager.timestamp_to_hours(last_posted_sub.created_utc)
-
-		if last_created < self.submission_interval:
-			logging.info(f":: Nice try - Time Since Last For Is {last_posted_sub} for {bot_configuration.Name} is less than {self.submission_interval}")
-			return False
-
 		failures = []
-		for sub in bot_configuration.SubReddits:
-			logging.info(f"Time Since Last Submission to {sub} is {last_created}")
+		for target_sub in bot_configuration.SubReddits:
+			last_posted_sub = await self.get_last_posted_submission(instance, target_sub)
+			if last_posted_sub is None:
+				last_created = 2
+			else:
+				last_created = RedditManager.timestamp_to_hours(last_posted_sub.created_utc)
+			if last_created < self.submission_interval:
+				logging.info(f":: Nice try - Time Since Last For Is {last_posted_sub} for {bot_configuration.Name} is less than {self.submission_interval}")
+				continue
+
+			logging.info(f"Time Since Last Submission to {target_sub} is {last_created}")
+
 			image_gen_prob: int = random.randint(1, 2)
-			target_sub: str = sub
 			logging.info(f":: Preparing Submission To {target_sub} for {bot_configuration.Name}")
 			prompt = self.tagging.get_random_new_submission_tag(subreddit=target_sub)
 			result = self.generator.generate_text(bot_username=bot_configuration.Name, prompt=prompt, default_cuda=True, num_text_generations=1)
@@ -80,9 +78,13 @@ class SubmissionService:
 					continue
 			return len(failures) == 0
 
-	async def get_last_posted_submission(self, instance: Reddit) -> Submission:
+	async def get_last_posted_submission(self, instance: Reddit, subreddit_name: str) -> Submission:
 		me = await instance.user.me()
 		async for submission in me.submissions.new():
 			await submission.load()
-			return submission
+			subreddit: Subreddit = submission.subreddit
+			await subreddit.load()
+			if subreddit.name == subreddit_name:
+				return submission
+			continue
 

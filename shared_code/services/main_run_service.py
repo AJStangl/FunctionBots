@@ -21,8 +21,6 @@ from shared_code.services.reply_service import ReplyService
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 
 
-cached_instance = None
-
 class BotMonitorService:
 	def __init__(self):
 		self.reddit_helper: RedditManager = RedditManager()
@@ -32,138 +30,136 @@ class BotMonitorService:
 		self.message_live_in_hours = 60 * 60 * 8
 		self.all_workers: [str] = ["worker-1", "worker-2", "worker-3"]
 		self.max_search_time = int(os.environ["MaxSearchSeconds"])
-		self.reddit_instance: Optional[Reddit] = cached_instance
+		self.reddit_instance: Optional[Reddit] = None
 
 	async def invoke(self, message: func.QueueMessage):
-
-		# Decode incoming message
-		################################################################################################################
 		try:
-			message_json = message.get_body().decode('utf-8')
-		except Exception:
-			temp = TableHelper.handle_incoming_message(message)
-			message_json = json.dumps(temp)
-		incoming_message: BotConfiguration = json.loads(message_json, object_hook=lambda d: BotConfiguration(**d))
-		bot_name: str = incoming_message.Name
-		################################################################################################################
+			# Decode incoming message
+			################################################################################################################
+			try:
+				message_json = message.get_body().decode('utf-8')
+			except Exception:
+				temp = TableHelper.handle_incoming_message(message)
+				message_json = json.dumps(temp)
+			incoming_message: BotConfiguration = json.loads(message_json, object_hook=lambda d: BotConfiguration(**d))
+			bot_name: str = incoming_message.Name
+			################################################################################################################
 
-		# Wire-Up dependencies
-		################################################################################################################
-		if self.reddit_instance is None:
-			reddit: Reddit = self.reddit_helper.get_praw_instance_for_bot(bot_name)
-			self.reddit_instance = reddit
+			# Wire-Up dependencies
+			################################################################################################################
+			if self.reddit_instance is None:
+				reddit: Reddit = self.reddit_helper.get_praw_instance_for_bot(bot_name)
+				self.reddit_instance = reddit
 
-		tagging: TaggingMixin = TaggingMixin(self.reddit_instance)
-		reply_logic: ReplyLogic = ReplyLogic(self.reddit_instance)
-		################################################################################################################
+			tagging: TaggingMixin = TaggingMixin(self.reddit_instance)
+			reply_logic: ReplyLogic = ReplyLogic(self.reddit_instance)
+			################################################################################################################
 
-		user: Redditor = await self.reddit_instance.user.me()
-		subs: str = self.reddit_helper.get_subs_from_configuration(bot_name)
+			user: Redditor = await self.reddit_instance.user.me()
+			subs: str = self.reddit_helper.get_subs_from_configuration(bot_name)
 
-		subreddit: Subreddit = await self.reddit_instance.subreddit(subs)
+			subreddit: Subreddit = await self.reddit_instance.subreddit(subs)
 
-		logging.info(f":: Initializing Reply Before Main Routine for {bot_name}")
+			logging.info(f":: Initializing Reply Before Main Routine for {bot_name}")
 
-		# Check for messages that for whatever reason need to be replied to
-		unsent_replies = self.repository.search_for_unsent_replies(bot_name)
-		logging.info(f":: Check for unsent respond events for {bot_name}")
-		for reply in unsent_replies:
-			if reply is None:
-				logging.info(f":: No records found for comments or submission to process for {bot_name}")
-				continue
-			message_string = json.dumps(reply.as_dict())
-			reply_client = self.queue_proxy.service.get_queue_client("reply-queue", message_encode_policy=TextBase64EncodePolicy())
-			logging.info(f":: Sending Message To Reply Queue for {bot_name}")
-			reply_client.send_message(message_string)
+			# Check for messages that for whatever reason need to be replied to
+			unsent_replies = self.repository.search_for_unsent_replies(bot_name)
+			logging.info(f":: Check for unsent respond events for {bot_name}")
+			for reply in unsent_replies:
+				if reply is None:
+					logging.info(f":: No records found for comments or submission to process for {bot_name}")
+					continue
+				message_string = json.dumps(reply.as_dict())
+				reply_client = self.queue_proxy.service.get_queue_client("reply-queue", message_encode_policy=TextBase64EncodePolicy())
+				logging.info(f":: Sending Message To Reply Queue for {bot_name}")
+				reply_client.send_message(message_string)
 
-		logging.info(f":: Initializing Reply Service for {bot_name}")
-		await self.reply_service.invoke()
+			logging.info(f":: Initializing Reply Service for {bot_name}")
+			await self.reply_service.invoke()
 
 
-		# Initial Database Query For Responding
-		################################################################################################################
-		logging.info(f":: Handling pending comments and submissions from database for {bot_name}")
+			# Initial Database Query For Responding
+			################################################################################################################
+			logging.info(f":: Handling pending comments and submissions from database for {bot_name}")
 
-		logging.info(f":: Fetching latest Comments For {bot_name}")
-		pending_comments = self.repository.search_for_pending("Comment", bot_name, 22)
+			logging.info(f":: Fetching latest Comments For {bot_name}")
+			pending_comments = self.repository.search_for_pending("Comment", bot_name, 22)
 
-		logging.info(f":: Fetching latest Submissions For {bot_name}")
-		pending_submissions = self.repository.search_for_pending("Submission", bot_name, 10)
+			logging.info(f":: Fetching latest Submissions For {bot_name}")
+			pending_submissions = self.repository.search_for_pending("Submission", bot_name, 10)
 
-		for record in self.chain_listing_generators(pending_comments, pending_submissions):
-			if record is None:
-				logging.info(f":: No records found for comments or submission to process for {bot_name}")
-				continue
+			for record in self.chain_listing_generators(pending_comments, pending_submissions):
+				if record is None:
+					logging.info(f":: No records found for comments or submission to process for {bot_name}")
+					continue
 
-			# Extract the record and set the status
-			record = record['TableRecord']
-			record.Status = 1
-			processed = await self.process_input(record, tagging)
-			if processed is None:
-				logging.info(f":: Failed To Process {record.RedditId} for {record.RespondingBot}")
-				continue
+				# Extract the record and set the status
+				record = record['TableRecord']
+				record.Status = 1
+				processed = await self.process_input(record, tagging)
+				if processed is None:
+					logging.info(f":: Failed To Process {record.RedditId} for {record.RespondingBot}")
+					continue
 
-			record.TextGenerationPrompt = processed
-			reply_probability_target: int = random.randint(0, 50)
-			if record.InputType == "Submission":
-				self.repository.update_entity(record)
-				queue = self.queue_proxy.service.get_queue_client(random.choice(self.all_workers), message_encode_policy=TextBase64EncodePolicy())
-				queue.send_message(json.dumps(record.as_dict()), time_to_live=self.message_live_in_hours)
-				logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
-				continue
+				record.TextGenerationPrompt = processed
+				reply_probability_target: int = random.randint(0, 50)
+				if record.InputType == "Submission":
+					self.repository.update_entity(record)
+					queue = self.queue_proxy.service.get_queue_client(random.choice(self.all_workers), message_encode_policy=TextBase64EncodePolicy())
+					queue.send_message(json.dumps(record.as_dict()), time_to_live=self.message_live_in_hours)
+					logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
+					continue
 
-			if record.ReplyProbability > reply_probability_target and record.InputType == "Comment":
-				queue = self.queue_proxy.service.get_queue_client(random.choice(self.all_workers), message_encode_policy=TextBase64EncodePolicy())
-				queue.send_message(json.dumps(record.as_dict()), time_to_live=self.message_live_in_hours)
-				self.repository.update_entity(record)
-				logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
-				continue
+				if record.ReplyProbability > reply_probability_target and record.InputType == "Comment":
+					queue = self.queue_proxy.service.get_queue_client(random.choice(self.all_workers), message_encode_policy=TextBase64EncodePolicy())
+					queue.send_message(json.dumps(record.as_dict()), time_to_live=self.message_live_in_hours)
+					self.repository.update_entity(record)
+					logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation")
+					continue
 
-			else:
-				logging.info(f":: Ignoring {record.InputType} for {record.RespondingBot} has a Probability of {record.ReplyProbability} but needs {reply_probability_target}")
-				record.Status = 2
-				self.repository.update_entity(record)
-				continue
+				else:
+					logging.info(f":: Ignoring {record.InputType} for {record.RespondingBot} has a Probability of {record.ReplyProbability} but needs {reply_probability_target}")
+					record.Status = 2
+					self.repository.update_entity(record)
+					continue
 
-		# Perform The Comment And Submission Mechanism
-		####################################################################################################################
-		logging.info(f":: Collecting Submissions for {bot_name}")
-		start_time: float = time.time()
-		async for submission in subreddit.new(limit=10):
-			if submission is None:
-				break
-			if round(time.time() - start_time) > self.max_search_time:
-				logging.info(f":: Halting Collection Past {self.max_search_time} seconds For Submissions")
-				break
-			await self.insert_submission_to_table(submission, user, reply_logic)
+			logging.info(f":: Collecting Submissions for {bot_name}")
+			start_time: float = time.time()
+			async for submission in subreddit.new(limit=10):
+				if submission is None:
+					break
+				if round(time.time() - start_time) > self.max_search_time:
+					logging.info(f":: Halting Collection Past {self.max_search_time} seconds For Submissions")
+					break
 
-		start_time = time.time()
-		logging.info(f":: Collecting Comments for {bot_name}")
-		async for comment in subreddit.stream.comments(pause_after=0):
-			if comment is None:
-				break
+				await self.insert_submission_to_table(submission, user, reply_logic)
 
-			if round(time.time() - start_time) > self.max_search_time:
-				logging.info(f":: Halting Collection Past {self.max_search_time} seconds For Comments")
-				break
+				logging.info(f":: Following Comment Forest For Submission {submission.id} for comments for {bot_name} to {subreddit.display_name}")
+				comments = await submission.comments()
+				await comments.replace_more(limit=None)
+				all_comments = await comments.list()
+				for comment in all_comments:
+					await self.insert_comment_to_table(comment, user, reply_logic)
+			####################################################################################################################
 
-			await self.insert_comment_to_table(comment, user, reply_logic)
-		####################################################################################################################
+			logging.info(f":: Initializing Reply After Main Routine for {bot_name}")
+			await self.reply_service.invoke()
 
-		logging.info(f":: Initializing Reply After Main Routine for {bot_name}")
-		await self.reply_service.invoke()
-
-		logging.info(f":: Polling Method Complete For {bot_name}")
-		await self.reddit_instance.close()
-		return None
+			logging.info(f":: Polling Method Complete For {bot_name}")
+			await self.reddit_instance.close()
+			return None
+		finally:
+			await self.reddit_instance.close()
 
 	async def process_input(self, record: TableRecord, tagging_mixin: TaggingMixin) -> Optional[str]:
 		if record.InputType == "Submission":
 			thing: Submission = await self.reddit_instance.submission(id=record.RedditId)
+			await thing.load()
 			if thing is None:
 				return None
 
 			history: str = await tagging_mixin.collate_tagged_comment_history(thing)
+
 			cleaned_history: str = tagging_mixin.remove_username_mentions_from_string(history, record.RespondingBot)
 			reply_start_tag: str = await tagging_mixin.get_reply_tag(thing, record.RespondingBot)
 			prompt: str = cleaned_history + reply_start_tag
@@ -171,6 +167,7 @@ class BotMonitorService:
 
 		if record.InputType == "Comment":
 			thing: Comment = await self.reddit_instance.comment(id=record.RedditId)
+			await thing.load()
 			if thing is None:
 				return None
 
@@ -184,6 +181,10 @@ class BotMonitorService:
 		# Ignore when submission is the same for the submitter and responder
 		if user.name == getattr(submission.author, 'name', ''):
 			return None
+
+		existing = self.repository.get_entity_by_id(f"{submission.id}|{user.name}")
+		if existing:
+			return existing
 
 		probability: int = await reply_probability.calculate_reply_probability(submission)
 
@@ -202,18 +203,24 @@ class BotMonitorService:
 			reply_probability=probability,
 			url=submission.url
 		)
-
-		logging.info(f":: Inserting Record submission {submission.id} with probability {probability} for {user.name}")
 		entity = self.repository.create_if_not_exist(mapped_input)
-		return entity
+		if entity:
+			logging.info(f":: Inserting Record submission {submission.id} with probability {probability} for {user.name}")
+			return entity
 
 	async def insert_comment_to_table(self, comment: Comment, user: Redditor, reply_probability: ReplyLogic) -> Optional[TableRecord]:
-		probability = await reply_probability.calculate_reply_probability(comment)
+		existing = self.repository.get_entity_by_id(f"{comment.id}|{user.name}")
+		if existing:
+			return existing
+		probability: int = await reply_probability.calculate_reply_probability(comment)
 		submission = await self.reddit_instance.submission(id=comment.submission.id)
+		logging.debug(f":: {comment.id} {comment.author} {user.name} {submission.subreddit}")
+
 		if probability == 0:
-			logging.debug(f":: Reply Probability for {comment.id} is {probability} for bot - {user.name}")
+			logging.info(f":: Reply Probability for {comment.id} is {probability} for bot - {user.name}")
 			return None
 
+		logging.info(f":: Mapping Input {comment.id} for {comment.subreddit.display_name}")
 		mapped_input: TableRecord = TableHelper.map_base_to_message(
 			reddit_id=comment.id,
 			sub_reddit=comment.subreddit.display_name,
@@ -225,10 +232,10 @@ class BotMonitorService:
 			reply_probability=probability,
 			url=comment.permalink)
 
-		logging.info(f":: Inserting Record comment {comment.id} with probability {probability} for {user.name}")
 		entity = self.repository.create_if_not_exist(mapped_input)
-
-		return entity
+		if entity:
+			logging.info(f":: Inserting Record comment {comment.id} with probability {probability} for {user.name}")
+			return entity
 
 	@staticmethod
 	def timestamp_to_hours(utc_timestamp) -> int:
