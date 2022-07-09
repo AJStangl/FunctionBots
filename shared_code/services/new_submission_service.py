@@ -78,7 +78,8 @@ class SubmissionService:
 					continue
 			return len(failures) == 0
 
-	async def get_last_posted_submission(self, instance: Reddit, subreddit_name: str) -> Submission:
+	@staticmethod
+	async def get_last_posted_submission(instance: Reddit, subreddit_name: str) -> Submission:
 		me = await instance.user.me()
 		async for submission in me.submissions.new():
 			await submission.load()
@@ -87,4 +88,5 @@ class SubmissionService:
 			if subreddit.name == subreddit_name:
 				return submission
 			continue
+
 
