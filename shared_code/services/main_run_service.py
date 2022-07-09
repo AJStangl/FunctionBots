@@ -73,6 +73,7 @@ class BotMonitorService:
 				continue
 			message_string = json.dumps(reply.as_dict())
 			reply_client = self.queue_proxy.service.get_queue_client("reply-queue", message_encode_policy=TextBase64EncodePolicy())
+			logging.info(f":: Sending Message To Reply Queue for {bot_name}")
 			reply_client.send_message(message_string)
 
 		logging.info(f":: Initializing Reply Service for {bot_name}")

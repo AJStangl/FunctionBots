@@ -17,10 +17,9 @@ class ImageScrapper:
 		'type': 'scraper',
 		'prompt': None,
 		'image_post_search_prefix': None}
-		self.tagging: TaggingMixin = TaggingMixin()
 
-	def get_image_post(self, bot_username, generated_text):
-		new_prompt = self.tagging.extract_title_from_generated_text(generated_text)
+	def get_image_post(self, bot_username, generated_text, tagging: TaggingMixin):
+		new_prompt = tagging.extract_title_from_generated_text(generated_text)
 		image_url = self._download_image_for_search_string(bot_username, new_prompt)
 		return image_url
 

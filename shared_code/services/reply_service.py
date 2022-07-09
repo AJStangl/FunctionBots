@@ -87,7 +87,7 @@ class ReplyService:
 			if entity.InputType == "Submission":
 				sub_instance: Submission = await reddit.submission(id=entity.RedditId)
 				logging.info(f":: Sending Out Reply To Submission - {entity.RedditId}")
-				sub_instance.reply(body)
+				await sub_instance.reply(body)
 				entity.HasResponded = True
 				entity.Status = 4
 				entity.DateTimeSubmitted = str(datetime.datetime.now())
@@ -98,10 +98,12 @@ class ReplyService:
 			if entity.InputType == "Comment":
 				logging.info(f":: Sending Out Reply To Comment - {entity.RedditId}")
 				comment_instance: Comment = await reddit.comment(id=entity.RedditId)
-				comment_instance.reply(body)
+				await comment_instance.reply(body)
 				entity.HasResponded = True
 				entity.Status = 4
 				entity.DateTimeSubmitted = str(datetime.datetime.now())
 				entity.TextGenerationResponse = body
 				self.repository.update_entity(entity)
 				continue
+
+			await reddit.close()
