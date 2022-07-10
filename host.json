@@ -23,7 +23,10 @@
       "DisableColors": false
     },
     "logLevel": {
-      "default": "None",
+      "default": "Information",
+      "Function": "Information",
+      "shared_code": "Information",
+      "azure.core": "None",
       "azure.core.pipeline.policies.http_logging_policy": "None"
     },
     "singleton": {
