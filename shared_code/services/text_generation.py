@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime
-
+import azure.functions as func
 from shared_code.database.instance import TableRecord
 from shared_code.helpers.record_helper import TableHelper
 from shared_code.database.repository import DataRepository
@@ -13,7 +13,8 @@ class TextGenerationService:
 		self.repository: DataRepository = repository_instance
 		self.model_generator: ModelTextGenerator = model_generator
 
-	def invoke(self, message) -> str:
+	def invoke(self, message: func.QueueMessage) -> str:
+		logging.info(f"Invoking Text Generation for Message ID: {message.id}")
 		incoming_message: TableRecord = TableHelper.handle_fucking_bullshit(message)
 
 		bot_name = incoming_message["RespondingBot"]
@@ -26,7 +27,7 @@ class TextGenerationService:
 
 		prompt = incoming_message["TextGenerationPrompt"]
 
-		result = self.model_generator.generate_text(bot_name, prompt, num_text_generations=1)
+		result = self.model_generator.generate_text_with_no_wrapper(bot_name, prompt, num_text_generations=1)
 
 		entity.TextGenerationPrompt = prompt
 

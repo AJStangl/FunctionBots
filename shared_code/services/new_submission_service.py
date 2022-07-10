@@ -31,7 +31,7 @@ class SubmissionService:
 		image_gen_prob: int = random.randint(1, 2)
 		logging.info(f":: Preparing Submission To {target_sub} for {bot_configuration.Name}")
 		prompt = self.tagging.get_random_new_submission_tag(subreddit=target_sub)
-		result = self.generator.generate_text(bot_username=bot_configuration.Name, prompt=prompt, default_cuda=True, num_text_generations=1)
+		result = self.generator.generate_text_with_no_wrapper(bot_username=bot_configuration.Name, prompt_text=prompt, default_cuda=True, num_text_generations=1)
 		extracted_prompt = self.tagging.extract_submission_from_generated_text(result)
 
 		logging.info(f":: Attempting Submission Post to {target_sub} for {bot_configuration.Name}")

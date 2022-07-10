@@ -6,10 +6,10 @@
   },
   "extensions": {
     "queues": {
-      "batchSize": 16,
-      "newBatchThreshold": 8,
+      "batchSize": 4,
+      "newBatchThreshold": 1,
       "visibilityTimeout": "00:00:30",
-      "maxPollingInterval": "00:00:15"
+      "maxPollingInterval": "00:00:30"
     },
     "tables": {},
     "http": {
@@ -24,6 +24,7 @@
     },
     "logLevel": {
       "default": "Information",
+      "transformers": "Information",
       "Function": "Information",
       "shared_code": "Information",
       "azure.core": "None",
