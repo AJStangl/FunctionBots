@@ -77,7 +77,6 @@ class BotMonitorService:
 			logging.info(f":: Initializing Reply Service for {bot_name}")
 			await self.reply_service.invoke()
 
-
 			# Initial Database Query For Responding
 			################################################################################################################
 			logging.info(f":: Handling pending comments and submissions from database for {bot_name}")
@@ -153,27 +152,29 @@ class BotMonitorService:
 
 	async def process_input(self, record: TableRecord, tagging_mixin: TaggingMixin) -> Optional[str]:
 		if record.InputType == "Submission":
-			thing: Submission = await self.reddit_instance.submission(id=record.RedditId)
-			await thing.load()
-			if thing is None:
+			thing_submission: Submission = await self.reddit_instance.submission(id=record.RedditId, fetch=True)
+			if thing_submission is None:
 				return None
 
-			history: str = await tagging_mixin.collate_tagged_comment_history(thing)
+			await thing_submission.load()
+
+			history: str = await tagging_mixin.collate_tagged_comment_history(thing_submission)
 
 			cleaned_history: str = tagging_mixin.remove_username_mentions_from_string(history, record.RespondingBot)
-			reply_start_tag: str = await tagging_mixin.get_reply_tag(thing, record.RespondingBot)
+			reply_start_tag: str = await tagging_mixin.get_reply_tag(thing_submission)
 			prompt: str = cleaned_history + reply_start_tag
 			return prompt
 
 		if record.InputType == "Comment":
-			thing: Comment = await self.reddit_instance.comment(id=record.RedditId)
-			await thing.load()
-			if thing is None:
+			thing_comment: Comment = await self.reddit_instance.comment(id=record.RedditId, fetch=True)
+			if thing_comment is None:
 				return None
 
-			history: str = await tagging_mixin.collate_tagged_comment_history(thing)
+			await thing_comment.load()
+
+			history: str = await tagging_mixin.collate_tagged_comment_history(thing_comment)
 			cleaned_history: str = tagging_mixin.remove_username_mentions_from_string(history, record.RespondingBot)
-			reply_start_tag: str = await tagging_mixin.get_reply_tag(thing, record.RespondingBot)
+			reply_start_tag: str = await tagging_mixin.get_reply_tag(thing_comment)
 			prompt: str = cleaned_history + reply_start_tag
 			return prompt
 

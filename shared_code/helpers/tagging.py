@@ -46,7 +46,7 @@ class TaggingMixin:
 		while loop_thing and counter < to_level:
 
 			if isinstance(loop_thing, Submission):
-				tagged_text = await self.tag_submission(loop_thing, use_reply_sense)
+				tagged_text = await self.tag_submission(loop_thing)
 				prefix = tagged_text + prefix
 
 				# can't go any higher than a submission, so break the loop
@@ -54,7 +54,7 @@ class TaggingMixin:
 
 			elif isinstance(loop_thing, Comment):
 				# It's a comment
-				tagged_text = await self.tag_comment(loop_thing, use_reply_sense)
+				tagged_text = await self.tag_comment(loop_thing)
 				prefix = tagged_text + prefix
 				loop_thing = await loop_thing.parent()
 
@@ -62,7 +62,7 @@ class TaggingMixin:
 
 		return prefix
 
-	async def get_reply_tag(self, thing: RedditBase, bot_username, use_reply_sense=True) -> str:
+	async def get_reply_tag(self, thing: RedditBase) -> str:
 		"""
 		Get the reply tag to use.
 		The model will generate text after this reply tag.
@@ -71,29 +71,29 @@ class TaggingMixin:
 		"""
 		try:
 			if isinstance(thing, Comment):
-				comment = thing
-				await comment.load()
-				submission_id = comment.submission.id
-				submission = await self.reddit_instance.submission(id=submission_id, fetch=True)
+				base: RedditBase = thing
+				await base.load()
 
+				submission_id = base.submission.id
+				submission: Submission = await self.reddit_instance.submission(id=submission_id, fetch=True)
 				await submission.load()
 
 				# If the submission is the same as the responding bot use the <|soopr|> tag
-				if submission.author == comment.author:
+				if isinstance(base, Comment) and submission.author == base.author:
 					return '<|soopr|>'
 
-				parent_of_parent = await self.get_parent_of_parent(comment)
-
-				# if the parent's parent was by the author bot, use the own content tag
-				if parent_of_parent.author == bot_username:
-					return '<|soocr|>'
+				if isinstance(base, Comment):
+					parent_of_parent = await self.get_parent_of_parent(base)
+					await parent_of_parent.load()
+					if parent_of_parent.author == base.author:
+						return '<|soocr|>'
 
 			if isinstance(thing, Submission):
 				return self._reply_start_tag
 
 		except Exception as e:
 			logging.info(f":: {e} in get_reply_tag")
-			pass
+			return self._reply_start_tag
 
 		# It's just a straight reply
 		return self._reply_start_tag
@@ -119,19 +119,20 @@ class TaggingMixin:
 
 		return tag + self._title_start_tag
 
-	async def tag_submission(self, submission: Submission, use_reply_sense=True):
+	async def tag_submission(self, submission: Submission):
 		tagged_text = ""
+
 		await submission.load()
+
+		if not isinstance(submission, Submission):
+			return tagged_text
 
 		if submission.is_self:
 			tagged_text += "<|soss"
 		else:
 			tagged_text += "<|sols"
 
-		if use_reply_sense:
-			tagged_text += f" r/{submission.subreddit}|>"
-		else:
-			tagged_text += "|>"
+		tagged_text += f" r/{submission.subreddit}|>"
 
 		# prepend the tagged text
 		if submission.is_self:
@@ -151,21 +152,22 @@ class TaggingMixin:
 
 		return tagged_text
 
-	async def tag_comment(self, comment: Comment, use_reply_sense=True):
+	async def tag_comment(self, comment: Comment):
 		try:
+			await comment.load()
 			submission_id = comment.submission.id
+
 			submission: Submission = await self.reddit_instance.submission(id=submission_id)
 			await submission.load()
-			await comment.load()
 
-			if submission.author.name == comment.author.name:
+			if submission.author == comment.author:
 				return f'<|soopr u/{comment.author}|>{comment.body}<|eoopr|>'
 
 			parent_parent = await self.get_parent_of_parent(comment)
 
 			await parent_parent.load()
 
-			if parent_parent.author.name == comment.author.name:
+			if parent_parent.author == comment.author:
 				return f'<|soocr u/{comment.author}|>{comment.body}<|eoocr|>'
 			else:
 				return f'<|sor u/{comment.author}|>{comment.body}<|eor|>'
@@ -289,31 +291,45 @@ class TaggingMixin:
 		regex = re.compile(fr"u\/{username}(?!\|\>)", re.IGNORECASE)
 		return regex.sub('', string)
 
-	async def get_parent_of_parent(self, comment: RedditBase) -> RedditBase:
-		# Don't get the parent of a submission
-		if isinstance(comment, Submission):
-			await comment.load()
-			return comment
+	async def get_parent_of_parent(self, reddit_base: RedditBase) -> RedditBase:
+		# Guard for a base object coming is a submission.
+		if self.is_submission(reddit_base):
+			return reddit_base
 
-		# First get the parent.
-		parent = await comment.parent()
+		# cast to comment - compiler hint
+		base: RedditBase = reddit_base
+		try:
+			await base.load()
+		except Exception as e:
+			logging.error(f"Error attempting to load base object {e} in get_parent_of_parent")
+			return base
 
-		# If it's a submission then return the parent
-		if isinstance(parent, Submission):
+		# get the parent for the first item
+		try:
+			parent = await base.parent()
+			await parent.load()
+		except Exception as e:
+			logging.error(f"Error attempting to get the parent from base {e } in get_parent_of_parent")
+			return base
+
+		# if it's a submission then return the submission
+		if self.is_submission(parent):
 			return parent
 
-		# Force re-fresh to load parent
-		await parent.refresh()
-		if parent:
-			try:
-				parent_parent = await parent.parent()
-				# Check if parent is not a submission and refresh it.
-				if parent_parent and not isinstance(parent_parent, Submission):
-					await parent_parent.refresh()
-					return parent_parent
-				else:
-					# Otherwise return the submission
-					return parent_parent
-			except Exception as e:
-				logging.info(f":: Error getting parent of parent {e}")
+		# Then move up one more time to get the parent's parent
+		try:
+			parent_parent = await parent.parent()
+			await parent_parent.load()
+		except Exception as e:
+			logging.error(f"Error Attempting to get parent.parent from base {e} in get_parent_of_parent")
+			return parent
 
+		if self.is_submission(parent_parent):
+			await parent_parent.load()
+			return parent_parent
+		else:
+			return parent
+
+	@staticmethod
+	def is_submission(reddit_base: RedditBase) -> bool:
+		return isinstance(reddit_base, Submission)

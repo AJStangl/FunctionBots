@@ -7,6 +7,13 @@
       "direction": "in",
       "schedule": "0 0 0/3 * * *",
       "monitor": true
+    },
+    {
+      "type": "queue",
+      "direction": "out",
+      "name": "responseMessage",
+      "queueName": "submission-worker",
+      "connection": "AzureWebJobsStorage"
     }
   ]
 }

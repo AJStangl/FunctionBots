@@ -47,3 +47,11 @@ class TableHelper:
 			return incoming_message
 		except Exception as e:
 			logging.info(f":: Fucking bullshit man {e}")
+
+	@staticmethod
+	def handle_message_generic(message: func.QueueMessage) -> dict:
+		try:
+			return json.loads(json.dumps(message.get_json()))
+		except Exception as e:
+			return json.loads(base64.b64decode(message.get_body()))
+
