@@ -75,7 +75,7 @@ class BotMonitorService:
 				reply_client.send_message(message_string)
 
 			logging.info(f":: Initializing Reply Service for {bot_name}")
-			await self.reply_service.invoke()
+			# await self.reply_service.invoke()
 
 			# Initial Database Query For Responding
 			################################################################################################################
@@ -142,7 +142,7 @@ class BotMonitorService:
 			####################################################################################################################
 
 			logging.info(f":: Initializing Reply After Main Routine for {bot_name}")
-			await self.reply_service.invoke()
+			# await self.reply_service.invoke()
 
 			logging.info(f":: Polling Method Complete For {bot_name}")
 			await self.reddit_instance.close()
