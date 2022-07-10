@@ -24,7 +24,7 @@ class ReplyLogic:
 		self._comment_depth_reply_penalty: float = 0.1
 		self.max_time_since_submission: int = int(os.environ["MaxTimeSinceSubmission"])
 		self.max_comments: int = int(os.environ["MaxComments"])
-		self._known_bot_names: [str] = ["Subsim-meta-ssi"]
+		self._known_bot_names: [str] = os.environ["KnownBots"].split(",")
 
 	async def calculate_reply_probability(self, redditBase: RedditBase):
 
@@ -112,11 +112,11 @@ class ReplyLogic:
 			return 0
 
 		# Try to prevent all bots replying to a comment.
-		max_replies = 3
-		num_replies = await self._get_reply_count(comment)
-		if num_replies > max_replies:
-			logging.info(f":: Comment has {num_replies} and exceeds {max_replies}")
-			return 0
+		# max_replies = 3
+		# num_replies = await self._get_reply_count(comment)
+		# if num_replies > max_replies:
+		# 	logging.info(f":: Comment has {num_replies} and exceeds {max_replies}")
+		# 	return 0
 
 		# Try to prevent exceeding 250 comments for a submission
 		if submission.num_comments > self.max_comments:
@@ -130,7 +130,7 @@ class ReplyLogic:
 			return 0
 
 		# Try to prevent going to deep into the comment forest
-		max_depth: int = 6
+		max_depth: int = 12
 		comment_depth = await self._find_depth_of_comment(comment)
 		if comment_depth > max_depth:
 			logging.info(f":: Comment depth {comment_depth} exceeds {max_depth} for {user.name}")
@@ -180,7 +180,7 @@ class ReplyLogic:
 		hour_per_day: float = age_of_submission / 24.0
 		factor: float = 1.0 - hour_per_day
 		factored_decay_probability = reply_probability * factor * 100
-		max_probability = max(0, factored_decay_probability)
+		max_probability = max(0.0, factored_decay_probability)
 		return max_probability
 
 	async def _get_submission_from_comment(self, comment: Comment) -> Optional[Submission]:
