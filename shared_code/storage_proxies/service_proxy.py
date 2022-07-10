@@ -1,5 +1,6 @@
 import logging
 
+from azure.core.paging import ItemPaged
 from azure.storage.queue import QueueMessage, QueueServiceClient, TextBase64EncodePolicy, TextBase64DecodePolicy, \
 	QueueClient
 import azure.storage.queue
@@ -18,15 +19,21 @@ class QueueServiceProxy(object):
 		self.connection_string: str = self.config.connection_string
 		self.is_emulated: bool = self.config.is_emulated
 		self.service: QueueServiceClient = QueueServiceClient.from_connection_string(self.connection_string, encode_policy=TextBase64EncodePolicy())
+		self.queues: dict = {
+			"poll": "poll-queue",
+			"reply": "reply-queue",
+			"worker1": "worker-1",
+			"worker2": "worker-2",
+			"worker3": "worker-3",
+			"submission": "submission-worker",
+		}
 
 	def put_message(self, queue_name: str, content) -> azure.storage.queue.QueueMessage:
 		return self.service.put_message(queue_name, content=content)
 
 	def ensure_created(self) -> None:
-		self.try_create_queue("content-queue")
-		self.try_create_queue("poll-queue")
-		self.try_create_queue("prompt-queue")
-		self.try_create_queue("reply-queue")
+		for queue in self.queues.keys():
+			self.try_create_queue(self.queues[queue])
 		return None
 
 	def try_delete_queue(self, name) -> None:
@@ -44,28 +51,38 @@ class QueueServiceProxy(object):
 			return None
 
 	def delete_all(self) -> None:
-		self.try_delete_queue("content-queue")
-		self.try_delete_queue("poll-queue")
-		self.try_delete_queue("prompt-queue")
-		self.try_delete_queue("reply-queue")
-		self.try_delete_queue("reply-queue")
-
+		for queue in self.queues.keys():
+			self.try_delete_queue(self.queues[queue])
 		return None
 
 	def clear_queue(self, queue_name) -> None:
 		logging.info(f":: Deleting Queue {queue_name}")
+		queue_client: QueueClient = self.service.get_queue_client(queue_name)
+		response: ItemPaged[QueueMessage] = queue_client.receive_messages(messages_per_page=32)
+		page_count = 1
+		for message_batch in response.by_page():
+			logging.info(f":: Clearing Page {page_count} for {queue_name}")
+			for message in message_batch:
+				queue_client.delete_message(message)
+				page_count += 1
+		logging.info(f":: Cleared {queue_name}")
 
-		if queue_name == "*":
-			self.delete_all()
-			self.ensure_created()
-			return
+		return None
 
-		self.service.delete_queue(queue_name)
+	def get_total_message_count(self, queue_name) -> dict:
+		queue_client: QueueClient = self.service.get_queue_client(queue_name)
+		response: ItemPaged[QueueMessage] = queue_client.receive_messages(messages_per_page=32)
+		page_count = 1
+		total_messages = 0
 
-		logging.info(f":: Creating Queue {queue_name}")
-
-		self.service.create_queue(queue_name)
-		return
+		for message_batch in response.by_page():
+			for message in message_batch:
+				total_messages += 1
+			page_count += 1
+		return {
+			"page_count": page_count,
+			"total_messages": total_messages
+		}
 
 	def create_service_client(self, queue_name) -> QueueClient:
 		return QueueClient.from_connection_string(self.connection_string, queue_name)

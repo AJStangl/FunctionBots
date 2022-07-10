@@ -2,22 +2,36 @@
   "version": "2.0",
   "extensionBundle": {
     "id": "Microsoft.Azure.Functions.ExtensionBundle",
-    "version": "[2.*, 3.0.0)"
+    "version": "[3.3.0, 4.0.0)"
   },
   "extensions": {
     "queues": {
-      "batchSize": 8,
-      "newBatchThreshold": 1
+      "batchSize": 16,
+      "newBatchThreshold": 8,
+      "visibilityTimeout": "00:00:30",
+      "maxPollingInterval": "00:00:15"
     },
     "tables": {},
     "http": {
       "routePrefix": "api"
-    }
+    },
+     "functionTimeout": -1
   },
   "logging": {
+    "console": {
+      "isEnabled": true,
+      "DisableColors": false
+    },
     "logLevel": {
-      "default": "Information",
+      "default": "None",
       "azure.core.pipeline.policies.http_logging_policy": "None"
+    },
+    "singleton": {
+      "lockPeriod": "00:00:15",
+      "listenerLockPeriod": "00:01:00",
+      "listenerLockRecoveryPollingInterval": "00:01:00",
+      "lockAcquisitionTimeout": "00:01:00",
+      "lockAcquisitionPollingInterval": "00:00:03"
     }
   }
 }
