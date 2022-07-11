@@ -22,6 +22,7 @@ class QueueServiceProxy(object):
 		self.queues: dict = {
 			"poll": "poll-queue",
 			"reply": "reply-queue",
+			"data": "data-queue",
 			"worker1": "worker-1",
 			"worker2": "worker-2",
 			"worker3": "worker-3",
