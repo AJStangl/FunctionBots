@@ -33,7 +33,7 @@ class BotMonitorService:
 		self.max_search_time = int(os.environ["MaxSearchSeconds"])
 		self.reddit_instance: Optional[Reddit] = None
 
-	async def invoke(self, message: func.QueueMessage):
+	async def run_reddit_polling(self, message: func.QueueMessage):
 		try:
 			incoming_message: BotConfiguration = self.handle_message(message)
 
@@ -53,7 +53,7 @@ class BotMonitorService:
 
 			logging.info(f":: Collecting Submissions for {bot_name}")
 
-			async for submission in subreddit.new(limit=15):
+			async for submission in subreddit.new(limit=30):
 				await submission.load()
 
 				logging.info(f"::{submission.subreddit} - {submission} {submission.author}")
@@ -61,12 +61,13 @@ class BotMonitorService:
 
 				comment_forrest: CommentForest = submission.comments
 				await comment_forrest.replace_more(limit=None)
-
-				async for comment in comment_forrest:
+				all_comments = await comment_forrest.list()
+				# await comment_forrest.replace_more(limit=100)
+				# async for comment in comment_forrest:
+				# 	await comment.load()
+				for comment in all_comments:
 					await comment.load()
-
-					logging.info(
-						f"::{submission.subreddit} - {submission} {submission.author} {comment} {comment.author}")
+					logging.info(f"::{submission.subreddit} - {submission} {submission.author} {comment} {comment.author}")
 					await self.insert_comment_to_table(comment, user, reply_logic)
 
 			logging.info(f":: Polling Method Complete For {bot_name}")
@@ -109,20 +110,12 @@ class BotMonitorService:
 
 			for record in self.chain_listing_generators(pending_comments, pending_submissions):
 				queue = self.queue_proxy.service.get_queue_client(random.choice(self.all_workers), message_encode_policy=TextBase64EncodePolicy())
-				if record is None:
-					logging.info(f":: No records found for comments or submission to process for {bot_name}")
-					continue
-
-				# Extract the record and set the status
 				record = record['TableRecord']
 				record.Status = 1
 				processed = await self.process_input(record, tagging)
-				if processed is None:
-					logging.info(f":: Failed To Process {record.RedditId} for {record.RespondingBot}")
-					continue
 
 				record.TextGenerationPrompt = processed
-				reply_probability_target: int = random.randint(0, 100)
+				reply_probability_target: int = random.randint(0, 50)
 				if record.InputType == "Submission":
 					logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation to {record.Subreddit}")
 					queue.send_message(json.dumps(record.as_dict()), time_to_live=self.message_live_in_hours)
@@ -143,6 +136,8 @@ class BotMonitorService:
 					self.repository.update_entity(record)
 					queue.close()
 					continue
+
+			return None
 
 		finally:
 			if self.reddit_instance:
@@ -177,7 +172,6 @@ class BotMonitorService:
 			return prompt
 
 	async def insert_submission_to_table(self, submission: Submission, user: Redditor, reply_probability: ReplyLogic) -> Optional[TableRecord]:
-		# Ignore when submission is the same for the submitter and responder
 		if user.name == getattr(submission.author, 'name', ''):
 			return None
 
@@ -186,10 +180,6 @@ class BotMonitorService:
 			return existing
 
 		probability: int = await reply_probability.calculate_reply_probability(submission)
-
-		if probability == 0:
-			logging.debug(f":: Reply Probability for {submission.id} is {probability} for bot - {user.name}")
-			return None
 
 		mapped_input: TableRecord = TableHelper.map_base_to_message(
 			reddit_id=submission.id,

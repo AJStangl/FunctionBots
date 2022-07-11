@@ -58,6 +58,7 @@ class DataRepository:
 			entity = session.execute(
 				select(TableRecord)
 					.where(TableRecord.Status == 0)
+					.where(TableRecord.ReplyProbability > 0)
 					.where(TableRecord.InputType == input_type)
 					.where(TableRecord.RespondingBot == bot_name)
 					.limit(limit)

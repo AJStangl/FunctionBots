@@ -3,70 +3,70 @@
     "Name": "ChadNoctorBot-GPT2",
     "Model": "D:\\models\\large_noctor_bot_2\\",
     "SubReddits": [
-      "BotAnarchy", "CoopAndPabloPlayHouse"
+      "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "CoopBot-GPT2",
     "Model": "D:\\models\\large_coop_bot\\",
     "SubReddits": [
-      "BotAnarchy", "CoopAndPabloPlayHouse"
+      "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "GaryBot-GPT2",
     "Model": "D:\\models\\large_legal_bot\\",
     "SubReddits": [
-      "BotAnarchy", "CoopAndPabloPlayHouse"
+      "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "LarissaBot-GPT2",
     "Model": "D:\\models\\large_larissa_bot\\",
     "SubReddits": [
-      "BotAnarchy", "CoopAndPabloPlayHouse"
+      "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "LucyLoveBot-GPT2",
     "Model": "D:\\models\\large_lucy_bot_2\\",
     "SubReddits": [
-      "BotAnarchy", "CoopAndPabloPlayHouse"
+      "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "PabloBot-GPT2",
     "Model": "D:\\models\\large_pablo_bot",
     "SubReddits": [
-      "BotAnarchy", "CoopAndPabloPlayHouse"
+      "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "ScarySteveBot-GPT2",
     "Model": "D:\\models\\large_steve_bot_3\\",
     "SubReddits": [
-      "BotAnarchy", "CoopAndPabloPlayHouse"
+      "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "SusanBot-GPT2",
     "Model": "D:\\models\\large_flightattentdent_bot",
     "SubReddits": [
-      "BotAnarchy", "CoopAndPabloPlayHouse"
+      "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "UpvotedBecause-GPT2",
     "Model": "D:\\models\\large_all_bot\\",
     "SubReddits": [
-      "BotAnarchy", "CoopAndPabloPlayHouse"
+      "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "PlayHouseBot-Gpt2",
     "Model": "D:\\models\\large_playhouse_bot\\",
     "SubReddits": [
-      "BotAnarchy", "CoopAndPabloPlayHouse"
+      "CoopAndPabloPlayHouse"
     ]
   }
 ]
