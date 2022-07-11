@@ -172,14 +172,13 @@ class BotMonitorService:
 			return prompt
 
 	async def insert_submission_to_table(self, submission: Submission, user: Redditor, reply_probability: ReplyLogic) -> Optional[TableRecord]:
-		if user.name == getattr(submission.author, 'name', ''):
-			return None
-
 		existing = self.repository.get_entity_by_id(f"{submission.id}|{user.name}")
 		if existing:
 			return existing
 
 		probability: int = await reply_probability.calculate_reply_probability(submission)
+		if user.name == getattr(submission.author, 'name', ''):
+			probability = 0
 
 		mapped_input: TableRecord = TableHelper.map_base_to_message(
 			reddit_id=submission.id,
@@ -192,10 +191,10 @@ class BotMonitorService:
 			reply_probability=probability,
 			url=submission.url
 		)
+
 		entity = self.repository.create_if_not_exist(mapped_input)
 		if entity:
-			logging.info(
-				f":: Inserting Record submission {submission.id} with probability {probability} for {user.name}")
+			logging.info(f":: Inserting Record submission {submission.id} with probability {probability} for {user.name}")
 			return entity
 
 	async def insert_comment_to_table(self, comment: Comment, user: Redditor, reply_probability: ReplyLogic) -> Optional[TableRecord]:
@@ -205,10 +204,6 @@ class BotMonitorService:
 		probability: int = await reply_probability.calculate_reply_probability(comment)
 		submission = await self.reddit_instance.submission(id=comment.submission.id)
 		logging.debug(f":: {comment.id} {comment.author} {user.name} {submission.subreddit}")
-
-		if probability == 0:
-			logging.info(f":: Reply Probability for {comment.id} is {probability} for bot - {user.name}")
-			return None
 
 		logging.info(f":: Mapping Input {comment.id} for {comment.subreddit.display_name}")
 		mapped_input: TableRecord = TableHelper.map_base_to_message(
