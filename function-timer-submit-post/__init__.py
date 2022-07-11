@@ -12,7 +12,6 @@ async def main(submissionTimer: func.TimerRequest, responseMessage: func.Out[typ
 	logging.info(f":: Submission Creation Trigger Called")
 	manager: BotConfigurationManager = BotConfigurationManager()
 	configs: [BotConfiguration] = list(filter(manager.filter_configuration, manager.get_configuration()))
-	random.shuffle(configs)
 	messages: [str] = []
 	for bot_config in configs:
 		for sub in bot_config.SubReddits:

@@ -5,14 +5,22 @@
       "name": "initializingTimer",
       "type": "timerTrigger",
       "direction": "in",
-      "schedule": "0 0/2 * * * *",
-      "monitor": true
+      "schedule": "0 0/59 * * * *",
+      "monitor": true,
+      "runOnStartUp": true
     },
     {
       "type": "queue",
       "direction": "out",
       "name": "msg",
       "queueName": "poll-queue",
+      "connection": "AzureWebJobsStorage"
+    },
+    {
+      "type": "queue",
+      "direction": "out",
+      "name": "dataMsg",
+      "queueName": "data-queue",
       "connection": "AzureWebJobsStorage"
     }
   ]

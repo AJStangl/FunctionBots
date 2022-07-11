@@ -23,7 +23,7 @@ class TextGenerationService:
 
 		if entity is None:
 			logging.info(f":: Entity Not Found For Id {incoming_message['Id']}")
-			return
+			return None
 
 		prompt = incoming_message["TextGenerationPrompt"]
 

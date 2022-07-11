@@ -14,7 +14,7 @@ from shared_code.models.bot_configuration import BotConfigurationManager
 class ReplyLogic:
 	def __init__(self, instance: Reddit):
 		self._reddit_instance: Reddit = instance
-		self._base_reply_probability: float = 0
+		self._base_reply_probability: float = 0.0
 		self._own_comment_reply_boost: float = 0.20
 		self._interrogative_reply_boost: float = 0.20
 		self._human_author_reply_boost: float = 0.20
@@ -48,16 +48,16 @@ class ReplyLogic:
 		await reddit_user.load()
 		await submission.load()
 		if reddit_user.name == getattr(submission.author, 'name', ''):
-			return 0
+			return 0.0
 
 		max_time_since_submission: int = self.max_time_since_submission
 		time_since_original_post: int = max(0, RedditManager.timestamp_to_hours(submission.created_utc))
 		if time_since_original_post > max_time_since_submission:
 			logging.info(f":: Ignoring Submission with time_since_original_post: {time_since_original_post} > max_time_since_submission: {max_time_since_submission} for {reddit_user.name}")
-			return 0
+			return 0.0
 
 		else:
-			return 101
+			return 101.0
 
 	async def _handle_reply_comment_logic(self, comment: Comment, bot_names: [str], user: Redditor) -> float:
 
@@ -78,7 +78,7 @@ class ReplyLogic:
 		# Always reply to a username mention
 		if getattr(comment, 'type', '') == 'username_mention':
 			logging.info(f":: User name mention detected for {user.name}")
-			return 101
+			return 101.0
 
 		# Always reply if the author is not in the configuration
 		if comment_author.name not in bot_names + self._known_bot_names:
@@ -88,7 +88,7 @@ class ReplyLogic:
 		# Always respond if the name of the bot is in the text of the comment
 		text_content = comment.body
 		if user.name in text_content:
-			return 101
+			return 101.0
 
 		################################################################################################################
 		# Logic for Always Ignoring
@@ -104,12 +104,12 @@ class ReplyLogic:
 		# Ensure responding bot is not the same as the comments author
 		if user.name == getattr(comment.author, 'name', '') or comment_author.name == user.name:
 			logging.debug(f":: Comment Author {comment_author} is the name as {user.name}")
-			return 0
+			return 0.0
 
 		# Ensure that the bot does not respond to something in the do-not-reply list
 		if comment_author.name in self._do_not_reply_bot_usernames:
 			logging.debug(f":: Ignoring Comment author is in the do not reply list for {user.name}")
-			return 0
+			return 0.0
 
 		# Try to prevent all bots replying to a comment.
 		# max_replies = 3
@@ -130,11 +130,11 @@ class ReplyLogic:
 			return 0
 
 		# Try to prevent going to deep into the comment forest
-		max_depth: int = 12
+		max_depth: int = 6
 		comment_depth = await self._find_depth_of_comment(comment)
 		if comment_depth > max_depth:
 			logging.info(f":: Comment depth {comment_depth} exceeds {max_depth} for {user.name}")
-			return 0
+			return 0.0
 
 		################################################################################################################
 		# Logic for reply-probability
@@ -205,23 +205,10 @@ class ReplyLogic:
 				try:
 					await ancestor.refresh()
 				except Exception as e:
-					# An error can occur if a message is missing for some reason.
-					# To keep the bot alive, return early.
 					logging.exception(f":: Exception when counting the comment depth. returning early. {e}")
 					return depth_counter
 				refresh_counter += 1
 		return depth_counter
-
-	@staticmethod
-	async def _get_reply_count(comment: Comment) -> int:
-		comment.reply_sort = "old"
-		await comment.refresh()
-		replies = comment.replies
-		num_replies = 0
-		for elem in replies:
-			if elem is not None:
-				num_replies += 1
-		return num_replies
 
 	@staticmethod
 	def _get_interrogative_reply(text_content: str) -> bool:

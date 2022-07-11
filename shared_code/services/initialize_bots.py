@@ -14,8 +14,6 @@ class StartService:
 
 		configs = list(filter(self.manager.filter_configuration, self.manager.get_configuration()))
 
-		random.shuffle(configs)
-
 		messages = []
 		for config in configs:
 			message = {

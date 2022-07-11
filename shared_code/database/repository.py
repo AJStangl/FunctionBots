@@ -52,7 +52,7 @@ class DataRepository:
 		finally:
 			session.close()
 
-	def search_for_pending(self, input_type: str, bot_name: str, limit: int = 10):
+	def search_for_pending(self, input_type: str, bot_name: str, limit: int = 100):
 		session = Session(engine)
 		try:
 			entity = session.execute(

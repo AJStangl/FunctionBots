@@ -37,6 +37,7 @@ class SubmissionService:
 		logging.info(f":: Attempting Submission Post to {target_sub} for {bot_configuration.Name}")
 		if extracted_prompt is None:
 			logging.info(f":: Prompt is empty for {bot_configuration.Name}")
+			await instance.close()
 			return False
 
 		if image_gen_prob == 1:
@@ -50,9 +51,11 @@ class SubmissionService:
 				logging.info(f":: The prompt is: {extracted_prompt} for {bot_configuration.Name} to {target_sub}")
 				sub: Subreddit = await instance.subreddit(target_sub)
 				await sub.submit(**new_prompt)
+				await instance.close()
 				return True
 			except Exception as e:
 				logging.info(f":: Process Failed posting Image {e}")
+				await instance.close()
 				return False
 		else:
 			try:
@@ -61,7 +64,9 @@ class SubmissionService:
 				await sub.submit(**extracted_prompt)
 			except Exception as e:
 				logging.info(f":: Process Failed {e}")
+				await instance.close()
 				return False
+		await instance.close()
 		return True
 
 	@staticmethod
