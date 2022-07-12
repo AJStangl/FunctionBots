@@ -6,11 +6,11 @@ from azure.storage.queue import QueueServiceClient, QueueClient, QueueMessage
 from asyncpraw import Reddit
 from asyncpraw.models import Submission, Comment
 
-from shared_code.database.instance import TableRecord
+from shared_code.database.table_record import TableRecord
 from shared_code.helpers.record_helper import TableHelper
 from shared_code.database.repository import DataRepository
 from shared_code.helpers.reddit_helper import RedditManager
-from shared_code.helpers.tagging import TaggingMixin
+from shared_code.helpers.tagging import Tagging
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 
 
@@ -56,7 +56,7 @@ class ReplyService:
 				try:
 					reddit: Reddit = manager.get_praw_instance_for_bot(record["RespondingBot"])
 
-					tagging: TaggingMixin = TaggingMixin(reddit)
+					tagging: Tagging = Tagging(reddit)
 
 					extract: dict = tagging.extract_reply_from_generated_text(prompt, response)
 
@@ -124,7 +124,7 @@ class ReplyService:
 		try:
 			reddit: Reddit = manager.get_praw_instance_for_bot(record["RespondingBot"])
 
-			tagging: TaggingMixin = TaggingMixin(reddit)
+			tagging: Tagging = Tagging(reddit)
 
 			extract: dict = tagging.extract_reply_from_generated_text(prompt, response)
 

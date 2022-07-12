@@ -53,7 +53,7 @@ class ReplyLogic:
 		max_time_since_submission: int = self.max_time_since_submission
 		time_since_original_post: int = max(0, RedditManager.timestamp_to_hours(submission.created_utc))
 		if time_since_original_post > max_time_since_submission:
-			logging.info(f":: Ignoring Submission with time_since_original_post: {time_since_original_post} > max_time_since_submission: {max_time_since_submission} for {reddit_user.name}")
+			logging.debug(f":: Ignoring Submission with time_since_original_post: {time_since_original_post} > max_time_since_submission: {max_time_since_submission} for {reddit_user.name}")
 			return 0.0
 
 		else:
@@ -120,20 +120,20 @@ class ReplyLogic:
 
 		# Try to prevent exceeding 250 comments for a submission
 		if submission.num_comments > self.max_comments:
-			logging.info(f":: Ignoring Comment to Submission with {self.max_comments} comments")
+			logging.debug(f":: Ignoring Comment to Submission with {self.max_comments} comments")
 			return 0
 
 		# Try to ensure the max skew time from the submission is in range to reply
 		time_since_original_post: int = max(0, RedditManager.timestamp_to_hours(submission.created_utc))
 		if time_since_original_post > self.max_time_since_submission:
-			logging.info(f":: Ignoring Comment to Submission with time since post: {time_since_original_post} > {self.max_time_since_submission} for {user.name}")
+			logging.debug(f":: Ignoring Comment to Submission with time since post: {time_since_original_post} > {self.max_time_since_submission} for {user.name}")
 			return 0
 
 		# Try to prevent going to deep into the comment forest
 		max_depth: int = 6
 		comment_depth = await self._find_depth_of_comment(comment)
 		if comment_depth > max_depth:
-			logging.info(f":: Comment depth {comment_depth} exceeds {max_depth} for {user.name}")
+			logging.debug(f":: Comment depth {comment_depth} exceeds {max_depth} for {user.name}")
 			return 0.0
 
 		################################################################################################################

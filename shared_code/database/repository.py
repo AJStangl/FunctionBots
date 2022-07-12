@@ -4,26 +4,17 @@ import os
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
-from shared_code.database.instance import engine, TableRecord
-
+from shared_code.database.table_record import TableRecord
+from sqlalchemy import create_engine
 
 class DataRepository:
 	def __init__(self):
 		self._user = os.environ['PsqlUser']
 		self._password = os.environ['PsqlPassword']
-
-	def create_entry(self, record: TableRecord):
-		session = Session(engine)
-		try:
-			session.add(record)
-			session.commit()
-		except Exception as e:
-			logging.info(f":: {e}")
-		finally:
-			session.close()
+		self._engine = create_engine(f"postgresql://{self._user}:{self._password}@localhost:5432/redditData", pool_size=32, max_overflow=-1)
 
 	def create_if_not_exist(self, record) -> TableRecord:
-		session = Session(engine)
+		session = Session(self._engine)
 		try:
 			entity = session.get(TableRecord, record.Id)
 			if entity:
@@ -36,9 +27,11 @@ class DataRepository:
 			logging.info(f":: {e}")
 		finally:
 			session.close()
+			session.close_all()
+			self._engine.dispose()
 
 	def search_for_unsent_replies(self, bot_name: str):
-		session = Session(engine)
+		session = Session(self._engine)
 		try:
 			entity = session.execute(
 				select(TableRecord)
@@ -51,9 +44,11 @@ class DataRepository:
 			return entity
 		finally:
 			session.close()
+			session.close_all()
+			self._engine.dispose()
 
 	def search_for_pending(self, input_type: str, bot_name: str, limit: int = 100):
-		session = Session(engine)
+		session = Session(self._engine)
 		try:
 			entity = session.execute(
 				select(TableRecord)
@@ -67,9 +62,11 @@ class DataRepository:
 			return entity
 		finally:
 			session.close()
+			session.close_all()
+			self._engine.dispose()
 
 	def update_entity(self, entity):
-		session = Session(engine)
+		session = Session(self._engine)
 		try:
 			props = entity.as_dict()
 			session.query(TableRecord). \
@@ -78,11 +75,15 @@ class DataRepository:
 			session.commit()
 		finally:
 			session.close()
+			session.close_all()
+			self._engine.dispose()
 
 	def get_entity_by_id(self, Id: str) -> TableRecord:
-		session = Session(engine)
+		session = Session(self._engine)
 		try:
 			entity = session.get(TableRecord, Id)
 			return entity
 		finally:
 			session.close()
+			session.close_all()
+			self._engine.dispose()

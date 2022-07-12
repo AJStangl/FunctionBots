@@ -10,7 +10,7 @@ from asyncpraw.models import Submission, Comment, Redditor
 from asyncpraw.models.reddit.base import RedditBase
 
 
-class TaggingMixin:
+class Tagging:
 	"""
 	This mixin contains all the logic for tagging comments,
 	It is abstracted so that users can update this code on their fork,
@@ -31,7 +31,7 @@ class TaggingMixin:
 	def __init__(self, reddit: Reddit):
 		self.reddit_instance = reddit
 
-	async def collate_tagged_comment_history(self, loop_thing: RedditBase, to_level=12, use_reply_sense=True) -> str:
+	async def collate_tagged_comment_history(self, loop_thing: RedditBase, to_level=6) -> str:
 		"""
 		Loop backwards (upwards in reddit terms) from the praw_thing through the comment up x times,
 		tagging the content text in the same way as the training data is

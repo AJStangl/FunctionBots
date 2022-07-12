@@ -4,7 +4,7 @@ import json
 import logging
 
 import azure.functions as func
-from shared_code.database.instance import TableRecord
+from shared_code.database.table_record import TableRecord
 
 
 class TableHelper:

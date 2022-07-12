@@ -1,7 +1,7 @@
 function RunBot
 {
     conda activate reddit-function-bot
-    func start --functions function-timer-submit-post function-queue-submission-worker --verbose --port 8010
+    func start --functions function-timer-submission-start function-queue-submission-worker --verbose --port 7075
 }
 
 while(1) {

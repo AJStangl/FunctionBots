@@ -12,5 +12,6 @@ async def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> No
 	model_generator: ModelTextGenerator = ModelTextGenerator()
 	repository: DataRepository = DataRepository()
 	text_gen_service = TextGenerationService(repository, model_generator)
+
 	result = text_gen_service.invoke(message)
 	responseMessage.set(result)

@@ -9,7 +9,7 @@ from asyncpraw.models import Submission, Subreddit
 from shared_code.generators.text.model_text_generator import ModelTextGenerator
 from shared_code.helpers.image_scrapper import ImageScrapper
 from shared_code.helpers.reddit_helper import RedditManager
-from shared_code.helpers.tagging import TaggingMixin
+from shared_code.helpers.tagging import Tagging
 from shared_code.models.bot_configuration import BotConfiguration, BotConfigurationManager
 
 
@@ -20,12 +20,12 @@ class SubmissionService:
 		self.reddit_helper: RedditManager = RedditManager()
 		self.scrapper: ImageScrapper = ImageScrapper()
 		self.submission_interval: int = int(os.environ["SubmissionInterval"])
-		self.tagging: Optional[TaggingMixin] = None
+		self.tagging: Optional[Tagging] = None
 
 	async def invoke(self, bot_configuration: BotConfiguration) -> bool:
 		logging.info(f":: Invoking Submission Service For {bot_configuration.Name}")
 		instance: Reddit = self.reddit_helper.get_praw_instance_for_bot(bot_configuration.Name)
-		self.tagging: TaggingMixin = TaggingMixin(instance)
+		self.tagging: Tagging = Tagging(instance)
 		target_sub = bot_configuration.SubReddits[0]
 
 		image_gen_prob: int = random.randint(1, 2)

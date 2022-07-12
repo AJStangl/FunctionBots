@@ -8,7 +8,7 @@ import requests
 from bs4 import BeautifulSoup
 from nltk import sent_tokenize, TweetTokenizer
 
-from shared_code.helpers.tagging import TaggingMixin
+from shared_code.helpers.tagging import Tagging
 
 
 class ImageScrapper:
@@ -18,7 +18,7 @@ class ImageScrapper:
 		'prompt': None,
 		'image_post_search_prefix': None}
 
-	def get_image_post(self, bot_username, generated_text, tagging: TaggingMixin):
+	def get_image_post(self, bot_username, generated_text, tagging: Tagging):
 		new_prompt = tagging.extract_title_from_generated_text(generated_text)
 		image_url = self._download_image_for_search_string(bot_username, new_prompt)
 		return image_url
