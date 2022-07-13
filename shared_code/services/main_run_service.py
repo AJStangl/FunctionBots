@@ -33,6 +33,45 @@ class BotMonitorService:
 		self.max_search_time = int(os.environ["MaxSearchSeconds"])
 		self.reddit_instance: Optional[Reddit] = None
 
+	async def invoke_forest_crawl(self, message: func.QueueMessage) -> None:
+		try:
+			forest_message = self.handle_forest_message(message)
+			user_name = forest_message['user']
+			comment_id = forest_message['comment_id']
+			existing = self.repository.get_entity_by_id(f"{comment_id}|{user_name}")
+			if existing:
+				return
+
+			instance = self.reddit_helper.get_praw_instance_for_bot(user_name)
+
+			comment: Comment = await instance.comment(id=comment_id, fetch=True)
+
+			reply_logic = ReplyLogic(instance).calculate_reply_probability(comment)
+
+
+			probability: int = await reply_probability.calculate_reply_probability(comment)
+			submission = await self.reddit_instance.submission(id=comment.submission.id)
+			logging.debug(f":: {comment.id} {comment.author} {user.name} {submission.subreddit}")
+
+			logging.debug(f":: Mapping Input {comment.id} for {comment.subreddit.display_name}")
+			mapped_input: TableRecord = TableHelper.map_base_to_message(
+				reddit_id=comment.id,
+				sub_reddit=comment.subreddit.display_name,
+				input_type="Comment",
+				submitted_date=submission.created,
+				author=getattr(comment.author, 'name', ''),
+				responding_bot=user.name,
+				time_in_hours=self.timestamp_to_hours(comment.created),
+				reply_probability=probability,
+				url=comment.permalink)
+
+			entity = self.repository.create_if_not_exist(mapped_input)
+			if entity:
+				logging.info(f":: Inserting Record comment {comment.id} with probability {probability} for {user.name}")
+				return entity
+		finally:
+			pass
+
 	async def invoke_reddit_polling(self, message: func.QueueMessage) -> None:
 		try:
 			incoming_message: BotConfiguration = self.handle_message(message)
@@ -45,7 +84,11 @@ class BotMonitorService:
 
 			reply_logic: ReplyLogic = ReplyLogic(self.reddit_instance)
 
-			user: Redditor = await self.reddit_instance.user.me()
+			try:
+				user: Redditor = await self.reddit_instance.user.me()
+			except Exception as e:
+				logging.error(f"::Error Getting User...Exiting -- {e}")
+				return None
 
 			subs: str = self.reddit_helper.get_subs_from_configuration(bot_name)
 
@@ -53,17 +96,39 @@ class BotMonitorService:
 
 			logging.info(f":: Collecting Submissions for {bot_name}")
 
-			async for submission in subreddit.new(limit=30):
-				await submission.load()
+			total_query_date = datetime.now() + timedelta(minutes=5)
+			async for submission in subreddit.new(limit=10):
+				if total_query_date < datetime.now():
+					logging.info(f":: Max time exceeded for submission processing...{bot_name}")
+
+				try:
+					await submission.load()
+				except Exception as e:
+					logging.error(f":: Error loading Submission with {e}...Continuing")
+					continue
 
 				logging.debug(f"::{submission.subreddit} - {submission} {submission.author}")
 				await self.insert_submission_to_table(submission, user, reply_logic)
 
 				comment_forrest: CommentForest = submission.comments
-				await comment_forrest.replace_more(limit=None)
+				try:
+					await comment_forrest.replace_more(limit=None)
+				except Exception as e:
+					logging.error(f":: Error getting comment forest with {e}...Continuing")
+					continue
+
 				all_comments = await comment_forrest.list()
+				end_time = datetime.now() + timedelta(minutes=3)
 				for comment in all_comments:
-					await comment.load()
+					if end_time < datetime.now():
+						logging.info(f":: Max time exceeded for processing comments...{bot_name}")
+						break
+					try:
+						await comment.load()
+					except Exception as e:
+						logging.error(f":: Error loading comment with {e}...Continuing")
+						continue
+
 					logging.debug(f"::{submission.subreddit} - {submission} {submission.author} {comment} {comment.author}")
 					await self.insert_comment_to_table(comment, user, reply_logic)
 
@@ -114,7 +179,7 @@ class BotMonitorService:
 			logging.info(f":: Handling comments for {bot_name} - Attempting for {end_time}...")
 			for record in pending_comments:
 				if end_time < datetime.now():
-					logging.info(":: Mac time exceeded for processing comments...")
+					logging.info(":: Max time exceeded for processing comments...")
 					break
 				await self.handle_incoming_record(record, tagging)
 			logging.info(f":: Submission comments Complete for {bot_name}")
@@ -162,22 +227,45 @@ class BotMonitorService:
 			thing_submission: Submission = await self.reddit_instance.submission(id=record.RedditId, fetch=True)
 			if thing_submission is None:
 				return None
+			try:
+				await thing_submission.load()
+			except Exception as e:
+				logging.error(f":: Error loading comment returning None {e}")
+				return None
 
-			await thing_submission.load()
-
-			history: str = await tagging.collate_tagged_comment_history(thing_submission)
+			try:
+				history: str = await tagging.collate_tagged_comment_history(thing_submission)
+			except Exception as e:
+				logging.error(f": error Attemping to get history. Returning None {e}")
+				return None
 
 			cleaned_history: str = tagging.remove_username_mentions_from_string(history, record.RespondingBot)
-			reply_start_tag: str = await tagging.get_reply_tag(thing_submission)
+
+			try:
+				reply_start_tag: str = await tagging.get_reply_tag(thing_submission)
+			except Exception as e:
+				logging.info(f":: Failed to get reply tag with error {e}")
+				return None
+
 			prompt: str = cleaned_history + reply_start_tag
+
 			return prompt
 
 		if record.InputType == "Comment":
-			thing_comment: Comment = await self.reddit_instance.comment(id=record.RedditId, fetch=True)
+			try:
+				thing_comment: Comment = await self.reddit_instance.comment(id=record.RedditId, fetch=True)
+			except Exception as e:
+				logging.error(f":: Failed to load comment {e}")
+				return None
+
 			if thing_comment is None:
 				return None
 
-			await thing_comment.load()
+			try:
+				await thing_comment.load()
+			except Exception as e:
+				logging.error(f":: Failed to load comment {e}")
+				return None
 
 			history: str = await tagging.collate_tagged_comment_history(thing_comment)
 			cleaned_history: str = tagging.remove_username_mentions_from_string(history, record.RespondingBot)
@@ -215,10 +303,19 @@ class BotMonitorService:
 		existing = self.repository.get_entity_by_id(f"{comment.id}|{user.name}")
 		if existing:
 			return existing
-		probability: int = await reply_probability.calculate_reply_probability(comment)
-		submission = await self.reddit_instance.submission(id=comment.submission.id)
-		logging.debug(f":: {comment.id} {comment.author} {user.name} {submission.subreddit}")
+		try:
+			probability: int = await reply_probability.calculate_reply_probability(comment)
+		except Exception as e:
+			logging.error(f":: Error Attempting Probability Calculation {e}")
+			return None
+		try:
+			submission = await self.reddit_instance.submission(id=comment.submission.id)
+		except Exception as e:
+			logging.error(f":: Error Attempting To Get Submission for entity {e}")
+			return None
 
+
+		logging.debug(f":: {comment.id} {comment.author} {user.name} {submission.subreddit}")
 		logging.debug(f":: Mapping Input {comment.id} for {comment.subreddit.display_name}")
 		mapped_input: TableRecord = TableHelper.map_base_to_message(
 			reddit_id=comment.id,
@@ -261,3 +358,10 @@ class BotMonitorService:
 			message_json = json.dumps(temp)
 		incoming_message: BotConfiguration = json.loads(message_json, object_hook=lambda d: BotConfiguration(**d))
 		return incoming_message
+
+	@staticmethod
+	def handle_forest_message(message) -> dict:
+		message_json = message.get_body().decode('utf-8')
+		incoming_message = json.loads(message_json)
+		return incoming_message
+

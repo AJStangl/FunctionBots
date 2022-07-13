@@ -83,8 +83,13 @@ class Tagging:
 					return '<|soopr|>'
 
 				if isinstance(base, Comment):
-					parent_of_parent = await self.get_parent_of_parent(base)
-					await parent_of_parent.load()
+					try:
+						parent_of_parent = await self.get_parent_of_parent(base)
+						await parent_of_parent.load()
+					except Exception as e:
+						logging.error(f":: Failed to get parent of parent. Returning default. Error {e}")
+						return self._reply_start_tag
+
 					if parent_of_parent.author == base.author:
 						return '<|soocr|>'
 
@@ -122,7 +127,11 @@ class Tagging:
 	async def tag_submission(self, submission: Submission):
 		tagged_text = ""
 
-		await submission.load()
+		try:
+			await submission.load()
+		except Exception as e:
+			logging.error(f":: Failed to load submission in tag_submission with error\n{e}")
+			return tagged_text
 
 		if not isinstance(submission, Submission):
 			return tagged_text

@@ -32,7 +32,11 @@ class ReplyLogic:
 
 		bot_names = bot_manager.get_bot_name_list()
 
-		user: Redditor = await self._reddit_instance.user.me()
+		try:
+			user: Redditor = await self._reddit_instance.user.me()
+		except Exception as e:
+			logging.error(f":: Error getting user. Returning None - {e}")
+			return 0
 
 		if isinstance(redditBase, Submission):
 			return await self._handle_submission_logic(redditBase, user)
@@ -61,7 +65,14 @@ class ReplyLogic:
 
 	async def _handle_reply_comment_logic(self, comment: Comment, bot_names: [str], user: Redditor) -> float:
 
-		submission: Submission = await self._get_submission_from_comment(comment)
+		try:
+			submission: Submission = await self._get_submission_from_comment(comment)
+		except Exception as e:
+			logging.error(f":: Error in _get_submission_from_comment with {e}")
+			return 0.0
+		if submission is None:
+			logging.error(f":: _get_submission_from_comment returned None. See inner exception")
+			return 0.0
 
 		comment_author: Redditor = comment.author
 
