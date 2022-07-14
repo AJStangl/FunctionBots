@@ -46,11 +46,16 @@ class BotMonitorService:
 
 			comment: Comment = await instance.comment(id=comment_id, fetch=True)
 
-			reply_logic = ReplyLogic(instance).calculate_reply_probability(comment)
+			probability: int = await ReplyLogic(instance).calculate_reply_probability(comment)
 
-
-			probability: int = await reply_probability.calculate_reply_probability(comment)
 			submission = await self.reddit_instance.submission(id=comment.submission.id)
+
+			try:
+				user: Redditor = await instance.user.me()
+			except Exception as e:
+				logging.error(e)
+				return
+
 			logging.debug(f":: {comment.id} {comment.author} {user.name} {submission.subreddit}")
 
 			logging.debug(f":: Mapping Input {comment.id} for {comment.subreddit.display_name}")
@@ -97,20 +102,23 @@ class BotMonitorService:
 			logging.info(f":: Collecting Submissions for {bot_name}")
 
 			total_query_date = datetime.now() + timedelta(minutes=5)
-			async for submission in subreddit.new(limit=10):
+			async for submission in subreddit.new(limit=30):
 				if total_query_date < datetime.now():
 					logging.info(f":: Max time exceeded for submission processing...{bot_name}")
 
 				try:
+					submission.comment_sort = "new"
 					await submission.load()
 				except Exception as e:
 					logging.error(f":: Error loading Submission with {e}...Continuing")
 					continue
 
 				logging.debug(f"::{submission.subreddit} - {submission} {submission.author}")
+
 				await self.insert_submission_to_table(submission, user, reply_logic)
 
 				comment_forrest: CommentForest = submission.comments
+
 				try:
 					await comment_forrest.replace_more(limit=None)
 				except Exception as e:
@@ -118,7 +126,9 @@ class BotMonitorService:
 					continue
 
 				all_comments = await comment_forrest.list()
-				end_time = datetime.now() + timedelta(minutes=3)
+				all_comments.sort(key=lambda x: x.created_utc)
+
+				end_time = datetime.now() + timedelta(minutes=5)
 				for comment in all_comments:
 					if end_time < datetime.now():
 						logging.info(f":: Max time exceeded for processing comments...{bot_name}")
@@ -201,7 +211,7 @@ class BotMonitorService:
 			logging.debug(f":: completed input processing on {record}")
 
 			record.TextGenerationPrompt = processed
-			reply_probability_target: int = random.randint(0, 50)
+			reply_probability_target: int = random.randint(0, int(os.environ["MaxProbability"]))
 			if record.InputType == "Submission":
 				logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation to {record.Subreddit} on {worker}")
 				queue.send_message(json.dumps(record.as_dict()), time_to_live=self.message_live_in_hours)
