@@ -42,7 +42,12 @@ class Tagging:
 		"""
 		counter = 0
 		prefix = ''
-		await loop_thing.load()
+		try:
+			await loop_thing.load()
+		except Exception as e:
+			logging.error(f":: Error loading comment for collate_tagged_comment_history with error {e}")
+			return prefix
+
 		while loop_thing and counter < to_level:
 
 			if isinstance(loop_thing, Submission):
@@ -57,6 +62,7 @@ class Tagging:
 				tagged_text = await self.tag_comment(loop_thing)
 				prefix = tagged_text + prefix
 				loop_thing = await loop_thing.parent()
+
 
 			counter += 1
 
