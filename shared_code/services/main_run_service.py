@@ -23,9 +23,9 @@ class BotMonitorService(ServiceContainer):
 		super().__init__()
 		self.message_live_in_hours = 60 * 60 * 8
 		self.all_workers: [str] = ["worker-1", "worker-2", "worker-3"]
-		self.max_search_time = int(os.environ["MaxSearchSeconds"])
 
 	async def invoke_reddit_polling(self, message: func.QueueMessage) -> None:
+		logging.info(f":: Starting BotMonitorService invoke_reddit_polling")
 		try:
 			incoming_message: BotConfiguration = self.handle_message(message)
 
@@ -45,8 +45,8 @@ class BotMonitorService(ServiceContainer):
 
 			logging.info(f":: Collecting Submissions for {bot_name}")
 
-			total_query_date = datetime.now() + timedelta(minutes=5)
-			async for submission in subreddit.new(limit=10):
+			total_query_date = datetime.now() + timedelta(minutes=int(os.environ["MaxSubmissionSearch"]))
+			async for submission in subreddit.new(limit=int(os.environ["SubredditLimit"])):
 				if total_query_date < datetime.now():
 					logging.info(f":: Max time exceeded for submission processing...{bot_name}")
 				try:
@@ -75,7 +75,7 @@ class BotMonitorService(ServiceContainer):
 				all_comments = await comment_forrest.list()
 				all_comments.sort(key=lambda x: x.created_utc)
 
-				end_time = datetime.now() + timedelta(minutes=10)
+				end_time = datetime.now() + timedelta(minutes=int(os.environ["MaxCommentSearch"]))
 				for comment in all_comments:
 					if end_time < datetime.now():
 						logging.info(f":: Max time exceeded for processing comments...{bot_name}")
@@ -95,6 +95,7 @@ class BotMonitorService(ServiceContainer):
 			await self.close_reddit_instance()
 
 	async def invoke_data_query(self, message) -> None:
+		logging.info(f":: Starting BotMonitorService invoke_data_query")
 		try:
 			bot_config: BotConfiguration = self.handle_message(message)
 			bot_name = bot_config.Name
