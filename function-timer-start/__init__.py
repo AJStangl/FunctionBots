@@ -8,12 +8,7 @@ from shared_code.services.initialize_bots import StartService
 
 
 async def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[str]], dataMsg: func.Out[typing.List[str]]) -> None:
-
-	logging.info(f':: Starting Bot Function Timer')
-
-	manager: BotConfigurationManager = BotConfigurationManager()
-
-	start_service: StartService = StartService(manager)
+	start_service: StartService = StartService()
 
 	messages: [str] = start_service.invoke()
 

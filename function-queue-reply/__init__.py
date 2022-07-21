@@ -9,6 +9,7 @@ from shared_code.services.reply_service import ReplyService
 async def main(message: func.QueueMessage) -> None:
 	logging.info(f":: Reply Service Invocation")
 	reply_service: ReplyService = ReplyService()
+
 	eventloop = asyncio.get_event_loop()
 	tasks = [
 		asyncio.create_task(

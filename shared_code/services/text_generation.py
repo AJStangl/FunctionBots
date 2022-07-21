@@ -1,18 +1,20 @@
 import json
 import logging
+from typing import Optional
+
 import azure.functions as func
+
 from shared_code.database.table_record import TableRecord
-from shared_code.helpers.record_helper import TableHelper
-from shared_code.database.repository import DataRepository
 from shared_code.generators.text.model_text_generator import ModelTextGenerator
+from shared_code.helpers.record_helper import TableHelper
+from shared_code.services.service_container import ServiceContainer
 
 
-class TextGenerationService:
-	def __init__(self, repository_instance: DataRepository, model_generator: ModelTextGenerator):
-		self.repository: DataRepository = repository_instance
-		self.model_generator: ModelTextGenerator = model_generator
+class TextGenerationService(ServiceContainer):
+	def __init__(self):
+		super().__init__()
 
-	def invoke(self, message: func.QueueMessage) -> str:
+	def invoke(self, message: func.QueueMessage) -> Optional[str]:
 		logging.info(f"Invoking Text Generation for Message ID: {message.id}")
 		incoming_message: TableRecord = TableHelper.handle_fucking_bullshit(message)
 
@@ -26,7 +28,9 @@ class TextGenerationService:
 
 		prompt = incoming_message["TextGenerationPrompt"]
 
-		result = self.model_generator.generate_text_with_no_wrapper(bot_name, prompt, num_text_generations=1)
+		model_text_generator: ModelTextGenerator = ModelTextGenerator()
+
+		result = model_text_generator.generate_text_with_no_wrapper(bot_name, prompt)
 
 		entity.TextGenerationPrompt = prompt
 

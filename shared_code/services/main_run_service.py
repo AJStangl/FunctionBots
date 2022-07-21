@@ -45,12 +45,12 @@ class BotMonitorService(ServiceContainer):
 
 			logging.info(f":: Collecting Submissions for {bot_name}")
 
-			total_query_date = datetime.now() + timedelta(minutes=int(os.environ["MaxSubmissionSearch"]))
+			total_query_date = datetime.now() + timedelta(minutes=int(os.environ["MaxSubmissionSearchMinutes"]))
 			async for submission in subreddit.new(limit=int(os.environ["SubredditLimit"])):
 				if total_query_date < datetime.now():
 					logging.info(f":: Max time exceeded for submission processing...{bot_name}")
 				try:
-					submission.comment_sort = "default"
+					submission.comment_sort = "new"
 					await submission.load()
 					if submission.num_comments > int(os.environ["MaxComments"]):
 						logging.info(f":: Submission has more than {int(os.environ['MaxComments'])} comments. Skipping...")
@@ -74,8 +74,7 @@ class BotMonitorService(ServiceContainer):
 
 				all_comments = await comment_forrest.list()
 				all_comments.sort(key=lambda x: x.created_utc)
-
-				end_time = datetime.now() + timedelta(minutes=int(os.environ["MaxCommentSearch"]))
+				end_time = datetime.now() + timedelta(minutes=int(os.environ["MaxCommentSearchMinutes"]))
 				for comment in all_comments:
 					if end_time < datetime.now():
 						logging.info(f":: Max time exceeded for processing comments...{bot_name}")
@@ -129,7 +128,7 @@ class BotMonitorService(ServiceContainer):
 			logging.info(f":: Fetching latest Comments For {bot_name}")
 			pending_comments = self.repository.search_for_pending("Comment", bot_name, limit=30)
 
-			end_time = datetime.now() + timedelta(minutes=3)
+			end_time = datetime.now() + timedelta(minutes=10)
 			logging.info(f":: Handling comments for {bot_name} - Attempting for {end_time}...")
 			for record in pending_comments:
 				if end_time < datetime.now():
@@ -153,6 +152,8 @@ class BotMonitorService(ServiceContainer):
 			logging.debug(f":: starting input processing on {record}")
 			try:
 				processed = await self.process_input(record)
+				if processed is None:
+					return None
 			except Exception as e:
 				logging.error(f":: Exception occurred while process_input {e}")
 				return None

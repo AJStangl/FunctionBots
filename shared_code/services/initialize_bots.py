@@ -3,16 +3,17 @@ import logging
 import random
 
 from shared_code.models.bot_configuration import BotConfigurationManager
+from shared_code.services.service_container import ServiceContainer
 
 
-class StartService:
-	def __init__(self, bot_configuration_manager):
-		self.manager: BotConfigurationManager = bot_configuration_manager
+class StartService(ServiceContainer):
+	def __init__(self):
+		super().__init__()
 
 	def invoke(self) -> list[str]:
 		logging.info(f':: Starting Bot Function Timer')
 
-		configs = list(filter(self.manager.filter_configuration, self.manager.get_configuration()))
+		configs = list(filter(self.bot_configuration_manager.filter_configuration, self.bot_configuration_manager.get_configuration()))
 
 		messages = []
 		for config in configs:
