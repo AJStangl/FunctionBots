@@ -1,5 +1,8 @@
 import logging
+import random
 import time
+
+from torch import nn
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 import torch
 
@@ -28,7 +31,9 @@ class ModelTextGenerator(ServiceContainer):
 
 			tokenizer = GPT2Tokenizer.from_pretrained(bot_config.Model)
 
-			device = torch.device('cuda')
+			devices = [torch.device("cuda:0" if torch.cuda.is_available() else "cpu"), torch.device("cuda:1" if torch.cuda.is_available() else "cpu")]
+
+			device = random.choice(devices)
 
 			encoded_prompt = tokenizer.encode(prompt_text, add_special_tokens=False, return_tensors="pt")
 
@@ -53,14 +58,19 @@ class ModelTextGenerator(ServiceContainer):
 				num_return_sequences=1
 			)
 
-			text = tokenizer.decode(output_sequences[0], skip_special_tokens=False)
+			outputs = []
+			for i in range(1):
+				decoded_text = tokenizer.decode(output_sequences[i], skip_special_tokens=False)
+				outputs.append(decoded_text)
+				logging.info(f"Generated {i}: {tokenizer.decode(output_sequences[i], skip_special_tokens=False)}")
+
 
 			end_time = time.time()
 			duration = round(end_time - start_time, 1)
 
-			logging.info(f'{1} sample(s) of text generated in {duration} seconds.')
+			logging.info(f'{len(outputs)} sample(s) of text generated in {duration} seconds.')
 
-			return text
+			return outputs[0]
 
 		except Exception as e:
 			logging.error(f":: An error has occurred while attempting to generate text")

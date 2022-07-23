@@ -23,7 +23,7 @@
       "DisableColors": false
     },
     "logLevel": {
-      "default": "None",
+      "default": "Information",
       "BotMonitorService": "Information",
       "transformers": "Information",
       "Function": "Information",
