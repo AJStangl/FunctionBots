@@ -12,16 +12,22 @@ from transformers import GPT2Model
 from simpletransformers.language_generation import LanguageGenerationModel
 
 from shared_code.database.repository import DataRepository
+from shared_code.generators.text.model_text_generator import ModelTextGenerator
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.models.bot_configuration import BotConfigurationManager, BotConfiguration
 from shared_code.services.main_run_service import BotMonitorService
 from shared_code.services.new_submission_service import SubmissionService
 from shared_code.services.reply_service import ReplyService
+from shared_code.services.text_generation import TextGenerationService
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 
 
 async def main():
-	pass
+	# QueueServiceProxy().ensure_created()
+	service = TextGenerationService()
+	gen = ModelTextGenerator()
+	foo = gen.generate_text_with_no_wrapper("PabloBot-GPT2", "Hello World")
+	print(foo)
 
 
 if __name__ == '__main__':
