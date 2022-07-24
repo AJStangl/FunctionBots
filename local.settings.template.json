@@ -3,8 +3,9 @@
   "Values": {
     "FUNCTIONS_WORKER_RUNTIME": "python",
     "AzureWebJobsStorage": "AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;DefaultEndpointsProtocol=http;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;",
-    "FUNCTIONS_WORKER_PROCESS_COUNT": 10,
+    "FUNCTIONS_WORKER_PROCESS_COUNT": 5,
     "PYTHON_THREADPOOL_THREAD_COUNT": 12,
+    "FUNCTIONS_WORKER_SHARED_MEMORY_DATA_TRANSFER_ENABLED": 1,
     "AccountName": "devstoreaccount1",
     "AccountKey": "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==",
     "QueueEndpoint": "http://127.0.0.1:10001",
@@ -21,7 +22,9 @@
     "PsqlPassword": "",
     "MaxCommentSearchMinutes": 3,
     "MaxSubmissionSearchMinutes": 10,
-    "MaxProbability": 1,
-    "KnownBots": "Subsim-meta-ssi,Urist_McOnBreak,CryptoBro_GPT2_Bot,Grammar-Bot-Elite,Bot_80085,art_GPT2_bot,pics_GPT2_bot,christian-gpt2-bot"
+    "MaxProbability": 50,
+    "SubNameOverride": "OneNightStands",
+    "KnownBots": "Subsim-meta-ssi,Urist_McOnBreak,CryptoBro_GPT2_Bot,Grammar-Bot-Elite,Bot_80085,art_GPT2_bot,pics_GPT2_bot,christian-gpt2-bot",
+    "TimeoutForSearchIterator": 30.0
   }
 }

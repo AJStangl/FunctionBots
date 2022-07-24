@@ -171,7 +171,25 @@ class Tagging:
 
 		return tagged_text
 
-	async def tag_comment(self, comment: Comment):
+	async def tag_comment_with_sub(self, comment: Comment, submission: Submission) -> str:
+		try:
+			if submission.author == comment.author:
+				return f'<|soopr u/{comment.author}|>{comment.body}<|eoopr|>'
+
+			parent_parent = await self.get_parent_of_parent(comment)
+
+			await parent_parent.load()
+
+			if parent_parent.author == comment.author:
+				return f'<|soocr u/{comment.author}|>{comment.body}<|eoocr|>'
+			else:
+				return f'<|sor u/{comment.author}|>{comment.body}<|eor|>'
+
+		except Exception as e:
+			logging.error(f"{e} in tag_comment")
+			return f'<|sor|>{comment.body}<|eor|>'
+
+	async def tag_comment(self, comment: Comment) -> str:
 		try:
 			await comment.load()
 			submission_id = comment.submission.id
