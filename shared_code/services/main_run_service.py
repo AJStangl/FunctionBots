@@ -5,7 +5,7 @@ import os
 import random
 from datetime import datetime, timedelta
 from typing import Optional
-
+import time
 import azure.functions as func
 from asyncpraw.models import Submission, Subreddit
 from asyncpraw.models.comment_forest import CommentForest
@@ -13,6 +13,7 @@ from asyncpraw.reddit import Redditor, Comment
 from azure.storage.queue import TextBase64EncodePolicy
 
 from shared_code.database.table_record import TableRecord
+from shared_code.helpers.merge_async_iterator import MergeAsyncIterator
 from shared_code.helpers.record_helper import TableHelper
 from shared_code.models.bot_configuration import BotConfiguration
 from shared_code.services.service_container import ServiceContainer
@@ -43,51 +44,30 @@ class BotMonitorService(ServiceContainer):
 
 			subreddit: Subreddit = await self.reddit_instance.subreddit(subs)
 
-			logging.info(f":: Collecting Submissions for {bot_name}")
+			comment_stream = subreddit.stream.comments()
+			submission_stream = subreddit.stream.submissions()
 
-			total_query_date = datetime.now() + timedelta(minutes=int(os.environ["MaxSubmissionSearchMinutes"]))
-			async for submission in subreddit.new(limit=int(os.environ["SubredditLimit"])):
-				if total_query_date < datetime.now():
-					logging.info(f":: Max time exceeded for submission processing...{bot_name}")
+			start_time = time.time()
+			time_out_for_iteration: float = float(os.environ["TimeoutForSearchIterator"])
+			async for praw_item in MergeAsyncIterator(submission_stream, comment_stream, time_out=time_out_for_iteration):
 				try:
-					submission.comment_sort = "new"
-					await submission.load()
-					if submission.num_comments > int(os.environ["MaxComments"]):
-						logging.info(f":: Submission has more than {int(os.environ['MaxComments'])} comments. Skipping...")
-						continue
+					if isinstance(praw_item, Comment):
+						logging.info(f":: Handling {type(praw_item)} {praw_item} from stream")
+						comment: Comment = praw_item
+						await self.insert_comment_to_table(comment, user)
 
+					if isinstance(praw_item, Submission):
+						logging.info(f":: Handling {type(praw_item)} {praw_item} from stream")
+						submission: Submission = praw_item
+						await self.insert_submission_to_table(submission, user)
 				except Exception as e:
-					logging.error(f":: Error loading Submission with {e}...Continuing")
+					logging.error(f":: An exception has occurred while iterating incoming data with error: {e}")
 					continue
 
-				logging.debug(f"::{submission.subreddit} - {submission} {submission.author}")
+			end_time = time.time()
+			duration = round(end_time - start_time, 1)
 
-				await self.insert_submission_to_table(submission, user)
-
-				comment_forrest: CommentForest = submission.comments
-
-				try:
-					await comment_forrest.replace_more(limit=None)
-				except Exception as e:
-					logging.error(f":: Error getting comment forest with {e}...Continuing")
-					continue
-
-				all_comments = await comment_forrest.list()
-				all_comments.sort(key=lambda x: x.created_utc)
-				end_time = datetime.now() + timedelta(minutes=int(os.environ["MaxCommentSearchMinutes"]))
-				for comment in all_comments:
-					if end_time < datetime.now():
-						logging.info(f":: Max time exceeded for processing comments...{bot_name}")
-						break
-					try:
-						await comment.load()
-					except Exception as e:
-						logging.error(f":: Error loading comment with {e}...Continuing")
-						continue
-
-					logging.debug(f"::{submission.subreddit} - {submission} {submission.author} {comment} {comment.author}")
-					await self.insert_comment_to_table(comment, user)
-
+			logging.info(f":: Total Duration for Processing: {duration}")
 			logging.info(f":: Polling Method Complete For {bot_name}")
 			return None
 		finally:
@@ -119,7 +99,7 @@ class BotMonitorService(ServiceContainer):
 			logging.info(f":: Checked for unsent reply events - {bot_name}. Found {unsent_reply_count}")
 
 			logging.info(f":: Fetching latest Submissions For {bot_name}")
-			pending_submissions = self.repository.search_for_pending("Submission", bot_name, limit=30)
+			pending_submissions = self.repository.search_for_pending("Submission", bot_name, limit=100)
 			logging.info(f":: Handling submissions for {bot_name}")
 			for record in pending_submissions:
 				await self.handle_incoming_record(record)
