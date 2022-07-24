@@ -1,5 +1,6 @@
 import codecs
 import logging
+import os
 import re
 from typing import Union
 
@@ -109,7 +110,7 @@ class Tagging:
 		# It's just a straight reply
 		return self._reply_start_tag
 
-	def get_random_new_submission_tag(self, subreddit: str, use_reply_sense=True):
+	def get_random_new_submission_tag(self, subreddit: str = os.environ["SubNameOverride"], use_reply_sense=True):
 		import random
 		# random is already seeded in reddit_io init
 		random_value = random.random()
@@ -130,7 +131,7 @@ class Tagging:
 
 		return tag + self._title_start_tag
 
-	async def tag_submission(self, submission: Submission):
+	async def tag_submission(self, submission: Submission, tag_override: str = os.environ["SubNameOverride"]):
 		tagged_text = ""
 
 		try:
@@ -147,7 +148,10 @@ class Tagging:
 		else:
 			tagged_text += "<|sols"
 
-		tagged_text += f" r/{submission.subreddit}|>"
+		if tag_override is not None:
+			tagged_text += f" r/{tag_override}|>"
+		else:
+			tagged_text += f" r/{submission.subreddit}|>"
 
 		# prepend the tagged text
 		if submission.is_self:
@@ -295,14 +299,17 @@ class Tagging:
 
 		return return_dict
 
-	def remove_tags_from_string(self, input_string):
+	@staticmethod
+	def remove_tags_from_string(input_string):
 		# Removes any <|sor u/user|>, <|sost|> etc from a string
 		return re.sub(r'(\<\|[\w\/ ]*\|\>)', ' ', input_string).strip()
 
-	def _decode_generated_text(self, text):
+	@staticmethod
+	def _decode_generated_text(text):
 		return ftfy.fix_text(codecs.decode(text, "unicode_escape"))
 
-	def remove_username_mentions_from_string(self, string: str, username: str) -> str:
+	@staticmethod
+	def remove_username_mentions_from_string(string: str, username: str) -> str:
 		regex = re.compile(fr"u\/{username}(?!\|\>)", re.IGNORECASE)
 		return regex.sub('', string)
 

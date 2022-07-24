@@ -22,9 +22,9 @@ class SubmissionService(ServiceContainer):
 			self.set_reddit_instance(bot_configuration.Name)
 			target_sub = bot_configuration.SubReddits[0]
 
-			image_gen_prob: int = random.randint(1, 2)
+			image_gen_prob: int = random.randint(1, 100)
 			logging.info(f":: Preparing Submission To {target_sub} for {bot_configuration.Name}")
-			prompt = self.tagging.get_random_new_submission_tag(subreddit=target_sub)
+			prompt = self.tagging.get_random_new_submission_tag(subreddit=os.environ["SubNameOverride"])
 			result = model_text_generation.generate_text_with_no_wrapper(bot_username=bot_configuration.Name, prompt_text=prompt)
 			extracted_prompt = self.tagging.extract_submission_from_generated_text(result)
 
@@ -33,7 +33,7 @@ class SubmissionService(ServiceContainer):
 				logging.info(f":: Prompt is empty for {bot_configuration.Name}")
 				return False
 
-			if image_gen_prob == 1:
+			if image_gen_prob > 70:
 				image_url = self.scrapper.get_image_post(bot_configuration.Name, result, self.tagging)
 				new_prompt = {
 					'title': extracted_prompt['title'],

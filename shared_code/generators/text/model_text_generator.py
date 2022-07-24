@@ -6,6 +6,7 @@ from torch import nn
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 import torch
 
+from shared_code.helpers.tagging import Tagging
 from shared_code.services.service_container import ServiceContainer
 
 
@@ -51,26 +52,28 @@ class ModelTextGenerator(ServiceContainer):
 			output_sequences = model.generate(
 				input_ids=encoded_prompt,
 				max_length=1024,
-				temperature=0.8,
+				temperature=0.70,
 				top_k=40,
 				repetition_penalty=1.008,
 				do_sample=True,
-				num_return_sequences=1
+				num_return_sequences=2
 			)
 
-			outputs = []
-			for i in range(1):
+			text_generations = []
+			for i in range(2):
 				decoded_text = tokenizer.decode(output_sequences[i], skip_special_tokens=False)
-				outputs.append(decoded_text)
+				# clean_decoded_text = self.clean_text_generation(decoded_text)
+				text_generations.append(decoded_text)
 				logging.info(f"Generated {i}: {tokenizer.decode(output_sequences[i], skip_special_tokens=False)}")
 
 
 			end_time = time.time()
 			duration = round(end_time - start_time, 1)
 
-			logging.info(f'{len(outputs)} sample(s) of text generated in {duration} seconds.')
+			logging.info(f'{len(text_generations)} sample(s) of text generated in {duration} seconds.')
 
-			return outputs[0]
+			# TODO: Implement selection filter
+			return max(text_generations, key=len)
 
 		except Exception as e:
 			logging.error(f":: An error has occurred while attempting to generate text")
@@ -102,3 +105,7 @@ class ModelTextGenerator(ServiceContainer):
 		else:
 			logging.info(f":: Size of T Tensor {len(h)} is not equal to H tensor {len(h)}. Skipping model Generation")
 			return False
+
+	@staticmethod
+	def clean_text_generation(text_generation: str):
+		return Tagging.remove_tags_from_string(text_generation)

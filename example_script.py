@@ -11,6 +11,7 @@ from torch import Tensor
 from transformers import GPT2Model
 from simpletransformers.language_generation import LanguageGenerationModel
 
+import shared_code
 from shared_code.database.repository import DataRepository
 from shared_code.generators.text.model_text_generator import ModelTextGenerator
 from shared_code.helpers.reddit_helper import RedditManager
@@ -24,10 +25,18 @@ from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 
 async def main():
 	# QueueServiceProxy().ensure_created()
-	service = TextGenerationService()
-	gen = ModelTextGenerator()
-	foo = gen.generate_text_with_no_wrapper("PabloBot-GPT2", "Hello World")
-	print(foo)
+	# service = TextGenerationService()
+	# gen = ModelTextGenerator()
+	# foo = gen.generate_text_with_no_wrapper("PabloBot-GPT2", "Hello World")
+	# print(foo)
+
+	service = SubmissionService()
+	manager = BotConfigurationManager()
+	configs = manager.get_configuration()
+	random.shuffle(configs)
+	for config in configs:
+		await service.invoke(config)
+
 
 
 if __name__ == '__main__':
