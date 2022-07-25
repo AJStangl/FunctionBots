@@ -117,19 +117,25 @@ class ReplyLogic:
 		# Try to prevent exceeding 250 comments for a submission
 		if submission.num_comments > self.max_comments:
 			logging.debug(f":: Ignoring Comment to Submission with {self.max_comments} comments")
-			return 0
+			return 0.0
 
 		# Try to ensure the max skew time from the submission is in range to reply
 		time_since_original_post: int = max(0, RedditManager.timestamp_to_hours(submission.created_utc))
 		if time_since_original_post > self.max_time_since_submission:
 			logging.debug(f":: Ignoring Comment to Submission with time since post: {time_since_original_post} > {self.max_time_since_submission} for {user.name}")
-			return 0
+			return 0.0
 
 		# Try to prevent going to deep into the comment forest
-		max_depth: int = 12
+		max_depth: int = 6
 		comment_depth = await self._find_depth_of_comment(comment)
 		if comment_depth > max_depth:
 			logging.debug(f":: Comment depth {comment_depth} exceeds {max_depth} for {user.name}")
+			return 0.0
+
+		# Try to prevent to many comment replies
+		num_comments: int = len(await comment.replies.list())
+		if num_comments >= 3:
+			logging.debug(f"::Number of replies to the comment is {num_comments} > 3 for {user.name}")
 			return 0.0
 
 		################################################################################################################

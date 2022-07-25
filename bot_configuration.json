@@ -3,14 +3,14 @@
     "Name": "ChadNoctorBot-GPT2",
     "Model": "D:\\models\\large_noctor_bot_2\\",
     "SubReddits": [
-      "CoopAndPabloPlayHouse", "BotAnarchy"
+      "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "CoopBot-GPT2",
     "Model": "D:\\models\\large_coop_bot\\",
     "SubReddits": [
-      "CoopAndPabloPlayHouse", "BotAnarchy"
+      "CoopAndPabloPlayHouse"
     ]
   },
   {

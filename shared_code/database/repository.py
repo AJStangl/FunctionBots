@@ -13,6 +13,13 @@ class DataRepository:
 		self._password = os.environ['PsqlPassword']
 		self._engine = create_engine(f"postgresql://{self._user}:{self._password}@localhost:5432/redditData", pool_size=32, max_overflow=-1)
 
+	def get_session(self):
+		return Session(self._engine)
+
+	def close_and_dispose(self, session: Session):
+		session.close()
+		self._engine.dispose()
+
 	def create_if_not_exist(self, record) -> TableRecord:
 		session = Session(self._engine)
 		try:
@@ -27,7 +34,6 @@ class DataRepository:
 			logging.info(f":: {e}")
 		finally:
 			session.close()
-			session.close_all()
 			self._engine.dispose()
 
 	def search_for_unsent_replies(self, bot_name: str):
@@ -44,7 +50,6 @@ class DataRepository:
 			return entity
 		finally:
 			session.close()
-			session.close_all()
 			self._engine.dispose()
 
 	def search_for_pending(self, input_type: str, bot_name: str, limit: int = 100):
@@ -75,7 +80,6 @@ class DataRepository:
 			session.commit()
 		finally:
 			session.close()
-			session.close_all()
 			self._engine.dispose()
 
 	def get_entity_by_id(self, Id: str) -> TableRecord:
@@ -85,5 +89,4 @@ class DataRepository:
 			return entity
 		finally:
 			session.close()
-			session.close_all()
 			self._engine.dispose()

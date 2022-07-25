@@ -9,7 +9,7 @@ import time
 import azure.functions as func
 from asyncpraw.models import Submission, Subreddit
 from asyncpraw.models.comment_forest import CommentForest
-from asyncpraw.reddit import Redditor, Comment
+from asyncpraw.reddit import Redditor, Comment, Reddit
 from azure.storage.queue import TextBase64EncodePolicy
 
 from shared_code.database.table_record import TableRecord
@@ -52,6 +52,8 @@ class BotMonitorService(ServiceContainer):
 			logging.info(f":: Processing the Data For {time_out_for_iteration} seconds")
 			async for praw_item in MergeAsyncIterator(submission_stream, comment_stream, time_out=time_out_for_iteration):
 				try:
+					if praw_item is None:
+						break
 					if isinstance(praw_item, Comment):
 						logging.debug(f":: Handling {type(praw_item).__name__} {praw_item} from stream")
 						comment: Comment = praw_item
@@ -63,7 +65,7 @@ class BotMonitorService(ServiceContainer):
 						await self.insert_submission_to_table(submission, user)
 				except Exception as e:
 					logging.error(f":: An exception has occurred while iterating incoming data with error: {e}")
-					continue
+					break
 
 			end_time = time.time()
 			duration = round(end_time - start_time, 1)
@@ -79,27 +81,9 @@ class BotMonitorService(ServiceContainer):
 		try:
 			bot_config: BotConfiguration = self.handle_message(message)
 			bot_name = bot_config.Name
-
 			self.set_reddit_instance(bot_name)
 
-			logging.info(f":: Handling pending comments and submissions from database for {bot_name}")
 
-			unsent_reply_count = 0
-			unsent_replies = self.repository.search_for_unsent_replies(bot_name)
-			for reply in unsent_replies:
-				if reply is None:
-					logging.info(f":: No records found for comments or submission to process for {bot_name}")
-					continue
-				unsent_reply_count += 1
-				message_string = json.dumps(reply.as_dict())
-				reply_client = self.queue_proxy.service.get_queue_client("reply-queue", message_encode_policy=TextBase64EncodePolicy())
-				logging.info(f":: Sending Message To Unsent Message Reply Queue for {bot_name}")
-				reply_client.send_message(message_string)
-				reply_client.close()
-
-			logging.info(f":: Checked for unsent reply events - {bot_name}. Found {unsent_reply_count}")
-
-			logging.info(f":: Fetching latest Submissions For {bot_name}")
 			pending_submissions = self.repository.search_for_pending("Submission", bot_name, limit=100)
 			logging.info(f":: Handling submissions for {bot_name}")
 			for record in pending_submissions:
@@ -142,14 +126,16 @@ class BotMonitorService(ServiceContainer):
 			logging.debug(f":: completed input processing on {record}")
 
 			record.TextGenerationPrompt = processed
-			reply_probability_target: int = random.randint(0, int(os.environ["MaxProbability"]))
+			max_probability = int(os.environ["MaxProbability"])
+			reply_probability_target: int = random.randint(0, max_probability)
 			if record.InputType == "Submission":
 				logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation to {record.Subreddit} on {worker}")
 				queue.send_message(json.dumps(record.as_dict()), time_to_live=self.message_live_in_hours)
 				self.repository.update_entity(record)
 				return None
 
-			if record.ReplyProbability > int(os.environ["MaxProbability"]) and record.InputType == "Comment":
+			# int(os.environ["MaxProbability"])
+			if record.ReplyProbability >= max_probability and record.InputType == "Comment":
 				logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation to {record.Subreddit} on {worker}")
 				queue.send_message(json.dumps(record.as_dict()), time_to_live=self.message_live_in_hours)
 				self.repository.update_entity(record)
@@ -306,4 +292,3 @@ class BotMonitorService(ServiceContainer):
 		message_json = message.get_body().decode('utf-8')
 		incoming_message = json.loads(message_json)
 		return incoming_message
-

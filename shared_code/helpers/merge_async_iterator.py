@@ -1,5 +1,6 @@
 import asyncio
 from async_timeout import timeout
+from asyncprawcore import RequestException
 
 
 class MergeAsyncIterator:
@@ -17,12 +18,12 @@ class MergeAsyncIterator:
 
     async def __anext__(self):
         if all(f.done() for f in self._futures) and self._queue.empty():
-            raise StopAsyncIteration
+            return None
         with timeout(self.timeout):
             try:
                 return await self._queue.get()
             except asyncio.CancelledError:
-                raise StopAsyncIteration
+                return None
 
     def iter_coro(self, it):
         if not hasattr(it, '__aiter__'):
@@ -30,6 +31,9 @@ class MergeAsyncIterator:
         return self.aiter_to_queue(it)
 
     async def aiter_to_queue(self, ait):
-        async for i in ait:
-            await self._queue.put(i)
-            await asyncio.sleep(0)
+        try:
+            async for i in ait:
+                await self._queue.put(i)
+                await asyncio.sleep(0)
+        except RequestException as e:
+            return None
