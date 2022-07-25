@@ -49,6 +49,8 @@ class ModelTextGenerator(ServiceContainer):
 
 			model = model.to(device)
 
+			num_return_sequences = 1
+
 			output_sequences = model.generate(
 				input_ids=encoded_prompt,
 				max_length=1024,
@@ -56,36 +58,27 @@ class ModelTextGenerator(ServiceContainer):
 				top_k=40,
 				repetition_penalty=1.008,
 				do_sample=True,
-				num_return_sequences=2
+				num_return_sequences=num_return_sequences
 			)
 
 			text_generations = []
-			for i in range(2):
+			for i in range(num_return_sequences):
 				decoded_text = tokenizer.decode(output_sequences[i], skip_special_tokens=False)
-				# clean_decoded_text = self.clean_text_generation(decoded_text)
 				text_generations.append(decoded_text)
 				logging.info(f"Generated {i}: {tokenizer.decode(output_sequences[i], skip_special_tokens=False)}")
-
 
 			end_time = time.time()
 			duration = round(end_time - start_time, 1)
 
 			logging.info(f'{len(text_generations)} sample(s) of text generated in {duration} seconds.')
 
-			# TODO: Implement selection filter
 			return max(text_generations, key=len)
 
 		except Exception as e:
 			logging.error(f":: An error has occurred while attempting to generate text")
 			logging.error(e)
 		finally:
-			if model is not None:
-				model = model.to("cpu")
-				del model
-			if encoded_prompt is not None:
-				encoded_prompt = encoded_prompt.to("cpu")
-				del encoded_prompt
-			torch.cuda.empty_cache()
+			pass
 
 	@staticmethod
 	def validate_text_tensor(model_path, prompt):

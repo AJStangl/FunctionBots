@@ -26,17 +26,11 @@ class ReplyLogic:
 		self.max_comments: int = int(os.environ["MaxComments"])
 		self._known_bot_names: [str] = os.environ["KnownBots"].split(",")
 
-	async def calculate_reply_probability(self, redditBase: RedditBase):
+	async def calculate_reply_probability(self, redditBase: RedditBase, user: Redditor):
 
 		bot_manager: BotConfigurationManager = BotConfigurationManager()
 
 		bot_names = bot_manager.get_bot_name_list()
-
-		try:
-			user: Redditor = await self._reddit_instance.user.me()
-		except Exception as e:
-			logging.error(f":: Error getting user. Returning None - {e}")
-			return 0
 
 		if isinstance(redditBase, Submission):
 			return await self._handle_submission_logic(redditBase, user)
@@ -48,8 +42,6 @@ class ReplyLogic:
 			return await self._handle_reply_comment_logic(redditBase, bot_names, user)
 
 	async def _handle_submission_logic(self, submission: Submission, reddit_user: Redditor) -> float:
-		# Ignore when submission is the same for the submitter and responder
-		await reddit_user.load()
 		await submission.load()
 		if reddit_user.name == getattr(submission.author, 'name', ''):
 			return 0.0
@@ -122,13 +114,6 @@ class ReplyLogic:
 			logging.debug(f":: Ignoring Comment author is in the do not reply list for {user.name}")
 			return 0.0
 
-		# Try to prevent all bots replying to a comment.
-		# max_replies = 3
-		# num_replies = await self._get_reply_count(comment)
-		# if num_replies > max_replies:
-		# 	logging.info(f":: Comment has {num_replies} and exceeds {max_replies}")
-		# 	return 0
-
 		# Try to prevent exceeding 250 comments for a submission
 		if submission.num_comments > self.max_comments:
 			logging.debug(f":: Ignoring Comment to Submission with {self.max_comments} comments")
@@ -141,7 +126,7 @@ class ReplyLogic:
 			return 0
 
 		# Try to prevent going to deep into the comment forest
-		max_depth: int = 6
+		max_depth: int = 12
 		comment_depth = await self._find_depth_of_comment(comment)
 		if comment_depth > max_depth:
 			logging.debug(f":: Comment depth {comment_depth} exceeds {max_depth} for {user.name}")

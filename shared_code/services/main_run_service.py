@@ -49,15 +49,16 @@ class BotMonitorService(ServiceContainer):
 
 			start_time = time.time()
 			time_out_for_iteration: float = float(os.environ["TimeoutForSearchIterator"])
+			logging.info(f":: Processing the Data For {time_out_for_iteration} seconds")
 			async for praw_item in MergeAsyncIterator(submission_stream, comment_stream, time_out=time_out_for_iteration):
 				try:
 					if isinstance(praw_item, Comment):
-						logging.info(f":: Handling {type(praw_item)} {praw_item} from stream")
+						logging.debug(f":: Handling {type(praw_item).__name__} {praw_item} from stream")
 						comment: Comment = praw_item
 						await self.insert_comment_to_table(comment, user)
 
 					if isinstance(praw_item, Submission):
-						logging.info(f":: Handling {type(praw_item)} {praw_item} from stream")
+						logging.debug(f":: Handling {type(praw_item).__name__} {praw_item} from stream")
 						submission: Submission = praw_item
 						await self.insert_submission_to_table(submission, user)
 				except Exception as e:
@@ -83,42 +84,22 @@ class BotMonitorService(ServiceContainer):
 
 			logging.info(f":: Handling pending comments and submissions from database for {bot_name}")
 
-			unsent_reply_count = 0
-			unsent_replies = self.repository.search_for_unsent_replies(bot_name)
-			for reply in unsent_replies:
-				if reply is None:
-					logging.info(f":: No records found for comments or submission to process for {bot_name}")
-					continue
-				unsent_reply_count += 1
-				message_string = json.dumps(reply.as_dict())
-				reply_client = self.queue_proxy.service.get_queue_client("reply-queue", message_encode_policy=TextBase64EncodePolicy())
-				logging.info(f":: Sending Message To Unsent Message Reply Queue for {bot_name}")
-				reply_client.send_message(message_string)
-				reply_client.close()
-
-			logging.info(f":: Checked for unsent reply events - {bot_name}. Found {unsent_reply_count}")
-
-			logging.info(f":: Fetching latest Submissions For {bot_name}")
 			pending_submissions = self.repository.search_for_pending("Submission", bot_name, limit=100)
-			logging.info(f":: Handling submissions for {bot_name}")
-			for record in pending_submissions:
-				await self.handle_incoming_record(record)
-			logging.info(f":: Submission Handling Complete for {bot_name}")
-
-			logging.info(f":: Fetching latest Comments For {bot_name}")
 			pending_comments = self.repository.search_for_pending("Comment", bot_name, limit=100)
 
-			end_time = datetime.now() + timedelta(minutes=10)
-			logging.info(f":: Handling comments for {bot_name} - Attempting for {end_time}...")
-			for record in pending_comments:
-				if end_time < datetime.now():
-					logging.info(":: Max time exceeded for processing comments...")
+			start_time = time.time()
+			time_out_for_iteration: float = float(os.environ["TimeoutForSearchIterator"])
+			logging.info(f":: Processing the Data For {time_out_for_iteration} seconds")
+			for record in self.chain_listing_generators(pending_comments, pending_submissions):
+				end_time = time.time()
+				duration = round(end_time - start_time, 1)
+				if duration > time_out_for_iteration:
 					break
-				await self.handle_incoming_record(record)
-			logging.info(f":: Submission comments Complete for {bot_name}")
+				else:
+					await self.handle_incoming_record(record)
 
-			return None
-
+				logging.info(f":: Total Duration for Query Merge: {duration}")
+				return None
 		finally:
 			if self.reddit_instance:
 				await self.close_reddit_instance()
@@ -148,7 +129,7 @@ class BotMonitorService(ServiceContainer):
 				self.repository.update_entity(record)
 				return None
 
-			if record.ReplyProbability > reply_probability_target and record.InputType == "Comment":
+			if record.ReplyProbability > int(os.environ["MaxProbability"]) and record.InputType == "Comment":
 				logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation to {record.Subreddit} on {worker}")
 				queue.send_message(json.dumps(record.as_dict()), time_to_live=self.message_live_in_hours)
 				self.repository.update_entity(record)
@@ -217,8 +198,8 @@ class BotMonitorService(ServiceContainer):
 		existing = self.repository.get_entity_by_id(f"{submission.id}|{user.name}")
 		if existing:
 			return existing
-
-		probability: int = await self.reply_logic.calculate_reply_probability(submission)
+		user = await self.reddit_instance.user.me()
+		probability: int = await self.reply_logic.calculate_reply_probability(submission, user)
 		if user.name == getattr(submission.author, 'name', ''):
 			probability = 0
 
@@ -244,7 +225,8 @@ class BotMonitorService(ServiceContainer):
 		if existing:
 			return existing
 		try:
-			probability: int = await self.reply_logic.calculate_reply_probability(comment)
+			user = await self.reddit_instance.user.me()
+			probability: int = await self.reply_logic.calculate_reply_probability(comment, user)
 		except Exception as e:
 			logging.error(f":: Error Attempting Probability Calculation {e}")
 			return None
