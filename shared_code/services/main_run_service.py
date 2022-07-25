@@ -84,22 +84,42 @@ class BotMonitorService(ServiceContainer):
 
 			logging.info(f":: Handling pending comments and submissions from database for {bot_name}")
 
+			unsent_reply_count = 0
+			unsent_replies = self.repository.search_for_unsent_replies(bot_name)
+			for reply in unsent_replies:
+				if reply is None:
+					logging.info(f":: No records found for comments or submission to process for {bot_name}")
+					continue
+				unsent_reply_count += 1
+				message_string = json.dumps(reply.as_dict())
+				reply_client = self.queue_proxy.service.get_queue_client("reply-queue", message_encode_policy=TextBase64EncodePolicy())
+				logging.info(f":: Sending Message To Unsent Message Reply Queue for {bot_name}")
+				reply_client.send_message(message_string)
+				reply_client.close()
+
+			logging.info(f":: Checked for unsent reply events - {bot_name}. Found {unsent_reply_count}")
+
+			logging.info(f":: Fetching latest Submissions For {bot_name}")
 			pending_submissions = self.repository.search_for_pending("Submission", bot_name, limit=100)
+			logging.info(f":: Handling submissions for {bot_name}")
+			for record in pending_submissions:
+				await self.handle_incoming_record(record)
+			logging.info(f":: Submission Handling Complete for {bot_name}")
+
+			logging.info(f":: Fetching latest Comments For {bot_name}")
 			pending_comments = self.repository.search_for_pending("Comment", bot_name, limit=100)
 
-			start_time = time.time()
-			time_out_for_iteration: float = float(os.environ["TimeoutForSearchIterator"])
-			logging.info(f":: Processing the Data For {time_out_for_iteration} seconds")
-			for record in self.chain_listing_generators(pending_comments, pending_submissions):
-				end_time = time.time()
-				duration = round(end_time - start_time, 1)
-				if duration > time_out_for_iteration:
+			end_time = datetime.now() + timedelta(minutes=10)
+			logging.info(f":: Handling comments for {bot_name} - Attempting for {end_time}...")
+			for record in pending_comments:
+				if end_time < datetime.now():
+					logging.info(":: Max time exceeded for processing comments...")
 					break
-				else:
-					await self.handle_incoming_record(record)
+				await self.handle_incoming_record(record)
+			logging.info(f":: Submission comments Complete for {bot_name}")
 
-				logging.info(f":: Total Duration for Query Merge: {duration}")
-				return None
+			return None
+
 		finally:
 			if self.reddit_instance:
 				await self.close_reddit_instance()
