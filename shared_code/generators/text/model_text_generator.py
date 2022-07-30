@@ -14,14 +14,16 @@ class ModelTextGenerator(ServiceContainer):
 	def __init__(self):
 		super().__init__()
 		self.text_generation_parameters = {
-				'max_length': 1024,
-				'num_return_sequences': 0,
-				'prompt': None,
-				'temperature': 0.8,
-				'top_k': 40,
-				'repetition_penalty': 1.008,
-				'stop_token': '<|endoftext|>'
-			}
+			'max_length': 1024,
+			'num_return_sequences': 5,
+			'prompt': None,
+			'temperature': 0.8,
+			'top_k': 40,
+			'top_p': .75,
+			'do_sample': True,
+			'repetition_penalty': 1.08,
+			'stop_token': '<|endoftext|>'
+		}
 
 	def generate_text_with_no_wrapper(self, bot_username: str, prompt_text: str):
 		model = None
@@ -30,14 +32,15 @@ class ModelTextGenerator(ServiceContainer):
 		try:
 			bot_config = self.bot_configuration_manager.get_configuration_by_name(bot_username)
 
-			tokenizer = GPT2Tokenizer.from_pretrained(bot_config.Model)
-
 			devices = [
 				torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
 				torch.device("cuda:1" if torch.cuda.is_available() else "cpu"),
 				torch.device("cuda:2" if torch.cuda.is_available() else "cpu")]
 
-			device = random.choice(devices)
+			random_device_index = str(random.randint(0, torch.cuda.device_count() - 1))
+			device = torch.device(f"cuda:{random_device_index}")
+
+			tokenizer = GPT2Tokenizer.from_pretrained(bot_config.Model)
 
 			encoded_prompt = tokenizer.encode(prompt_text, add_special_tokens=False, return_tensors="pt")
 
@@ -52,20 +55,20 @@ class ModelTextGenerator(ServiceContainer):
 
 			model = model.to(device)
 
-			num_return_sequences = 1
-
 			output_sequences = model.generate(
 				input_ids=encoded_prompt,
-				max_length=1024,
-				temperature=0.70,
-				top_k=40,
-				repetition_penalty=1.008,
-				do_sample=True,
-				num_return_sequences=num_return_sequences
+				max_length=self.text_generation_parameters['max_length'],
+				temperature=self.text_generation_parameters['temperature'],
+				top_k=self.text_generation_parameters['top_k'],
+				top_p=self.text_generation_parameters['top_p'],
+				repetition_penalty=self.text_generation_parameters['repetition_penalty'],
+				do_sample=self.text_generation_parameters['do_sample'],
+				num_return_sequences=self.text_generation_parameters['num_return_sequences'],
 			)
 
 			text_generations = []
-			for i in range(num_return_sequences):
+
+			for i in range(self.text_generation_parameters['num_return_sequences']):
 				decoded_text = tokenizer.decode(output_sequences[i], skip_special_tokens=False)
 				text_generations.append(decoded_text)
 				logging.info(f"Generated {i}: {tokenizer.decode(output_sequences[i], skip_special_tokens=False)}")
@@ -88,13 +91,6 @@ class ModelTextGenerator(ServiceContainer):
 				encoded_prompt = encoded_prompt.to("cpu")
 				del encoded_prompt
 			torch.cuda.empty_cache()
-
-	def filtered_to_cuda(self, model: nn.Module) -> None:
-		def conditional_cuda(x):
-			if x.device.type != "cuda":
-				return x.to("cuda")
-			else:
-				return x
 
 	@staticmethod
 	def validate_text_tensor(model_path, prompt):

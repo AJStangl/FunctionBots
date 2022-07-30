@@ -23,7 +23,7 @@ class BotMonitorService(ServiceContainer):
 	def __init__(self):
 		super().__init__()
 		self.message_live_in_hours = 60 * 60 * 8
-		self.all_workers: [str] = ["worker-1", "worker-2", "worker-3"]
+		self.all_workers: [str] = ["worker-1"]
 
 	async def invoke_reddit_polling(self, message: func.QueueMessage) -> None:
 		logging.info(f":: Starting BotMonitorService invoke_reddit_polling")
