@@ -55,6 +55,7 @@ class TrackingResponse(Base):
 	BotName = Column(Text)
 	Text = Column(Text)
 	Ignore = Column(Boolean)
+	InFlight = Column(Boolean)
 	Submission = relationship("TrackingSubmission", foreign_keys=[RedditId])
 	Comment = relationship("TrackingComment", foreign_keys=[RedditId])
 

@@ -1,7 +1,7 @@
 function RunBot
 {
-    .\venv\Scripts\activate.ps1
-    func start --functions function-queue-submission-worker function-queue-text-generation-worker-1 function-queue-text-generation-worker-2 function-queue-text-generation-worker-3 -p 7006 --verbose
+    conda activate reddit-function-bot
+    func start --functions function-queue-worker-1 function-queue-worker-2 function-queue-worker-3 -p 7006 --verbose
 }
 
 while(1) {

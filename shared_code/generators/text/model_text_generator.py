@@ -25,20 +25,14 @@ class ModelTextGenerator(ServiceContainer):
 			'stop_token': '<|endoftext|>'
 		}
 
-	def generate_text_with_no_wrapper(self, bot_username: str, prompt_text: str):
+	def generate_text_with_no_wrapper(self, bot_username: str, prompt_text: str, device_id: str):
 		model = None
 		encoded_prompt = None
 		start_time = time.time()
 		try:
 			bot_config = self.bot_configuration_manager.get_configuration_by_name(bot_username)
 
-			devices = [
-				torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
-				torch.device("cuda:1" if torch.cuda.is_available() else "cpu"),
-				torch.device("cuda:2" if torch.cuda.is_available() else "cpu")]
-
-			random_device_index = str(random.randint(0, torch.cuda.device_count() - 1))
-			device = torch.device(f"cuda:{random_device_index}")
+			device = torch.device(f"cuda:{device_id}")
 
 			tokenizer = GPT2Tokenizer.from_pretrained(bot_config.Model)
 

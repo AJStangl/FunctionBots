@@ -11,7 +11,7 @@ from shared_code.models.reply_message import ReplyMessage
 from shared_code.services.text_generation import TextGenerationService
 
 
-def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> None:
+async def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> None:
 	message_json = TableHelper.handle_message_generic(message)
 	bot_name: str = message_json['BotName']
 	prompt: str = message_json['Prompt']
@@ -30,7 +30,7 @@ def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> None:
 			logging.info(f":: No entity present for Id: {tracking_id}")
 			return
 
-		response = model_text_generator.generate_text_with_no_wrapper(bot_name, prompt)
+		response = model_text_generator.generate_text_with_no_wrapper(bot_name, prompt, device_id="1")
 
 		entity.Text = response
 

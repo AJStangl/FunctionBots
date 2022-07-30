@@ -26,7 +26,8 @@ async def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[s
 
 			statement = select(TrackingResponse)\
 				.join(TrackingSubmission, TrackingSubmission.Id == TrackingResponse.RedditId)\
-				.where(TrackingResponse.Ignore == False)\
+				.where(TrackingResponse.Ignore == False) \
+				.where(TrackingResponse.InFlight == False) \
 				.where(TrackingResponse.HasResponded == False)\
 				.where(TrackingResponse.Text == None)\
 				.where(TrackingSubmission.Text != None)\
@@ -38,13 +39,17 @@ async def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[s
 
 			logging.info(f":: Processing Pending Submissions for {bot_name}: {len(submission_result)}")
 			for pending_submission in submission_result:
+				entity = session.get(TrackingResponse, pending_submission.Id)
+				entity.InFlight = True
+				session.commit()
 				submission_text = pending_submission.Submission.Text
 				message: TextGenerationMessage = TextGenerationMessage(reply_id=pending_submission.Id, prompt=submission_text, bot_name=bot_name, reddit_id=pending_submission.Submission.Id, reddit_type="Submission")
 				messages.append(message.to_string())
 
 			statement = select(TrackingResponse)\
 				.join(TrackingComment, TrackingComment.Id == TrackingResponse.RedditId) \
-				.where(TrackingResponse.Ignore == False)\
+				.where(TrackingResponse.Ignore == False) \
+				.where(TrackingResponse.InFlight == False) \
 				.where(TrackingResponse.HasResponded == False)\
 				.where(TrackingResponse.Text == None)\
 				.where(TrackingComment.Text != "")\
@@ -56,14 +61,16 @@ async def main(initializingTimer: func.TimerRequest, msg: func.Out[typing.List[s
 
 			logging.info(f":: Processing Pending Comments for {bot_name}: {len(comment_result)}")
 			for pending_comment in comment_result:
+				entity = session.get(TrackingResponse, pending_comment.Id)
 				probability_to_reply = random.randint(0, 100)
-				if probability_to_reply < 70:
-					logging.info(f":: Random Probability for Processing is {probability_to_reply} but needed < {70}")
-					entity = session.get(TrackingResponse, pending_comment.Id)
+				if probability_to_reply < 90:
+					logging.info(f":: Random Probability for Processing is {probability_to_reply} but needed < {90}")
 					entity.Ignore = True
 					session.commit()
 					continue
 
+				entity.InFlight = True
+				session.commit()
 				comment_text = pending_comment.Comment.Text
 				message: TextGenerationMessage = TextGenerationMessage(reply_id=pending_comment.Id, prompt=comment_text, bot_name=bot_name, reddit_id=pending_comment.Comment.Id, reddit_type="Comment")
 				messages.append(message.to_string())
