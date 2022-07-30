@@ -8,7 +8,7 @@ from asyncpraw.models.comment_forest import CommentForest
 from asyncpraw.reddit import Redditor, Reddit, Subreddit
 import logging
 import torch
-from sqlalchemy import create_engine, insert
+from sqlalchemy import create_engine, insert, select, desc
 from sqlalchemy.orm import Session
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 from torch import Tensor
@@ -24,6 +24,7 @@ from shared_code.helpers.merge_async_iterator import MergeAsyncIterator
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.helpers.tagging import Tagging
 from shared_code.models.bot_configuration import BotConfigurationManager, BotConfiguration
+from shared_code.models.text_generation_message import TextGenerationMessage
 from shared_code.services.main_run_service import BotMonitorService
 from shared_code.services.new_submission_service import SubmissionService
 from shared_code.services.reply_service import ReplyService
@@ -163,15 +164,27 @@ async def function_that_handles_comment_collation_and_initialization():
 	entities: [] = context.get_comments_for_processing(session, limit=30)
 	logging.info(f":: Processing {len(entities)} Comment Text Values")
 	comment_ids = []
+	time_out_for_iteration = 120
+	logging.info(f":: Streaming Comments For {time_out_for_iteration} seconds")
+	start_time = time.time()
 	for entity in entities:
 		comment_id = entity.Id
 		comment_ids.append(comment_id)
 		submission_id = entity.SubmissionId
-		comment: Comment = await instance.comment(id=comment_id, fetch=True)
-		submission: Submission = await instance.submission(id=submission_id, fetch=True)
-		text = await tagging.tag_comment_with_sub(comment, submission)
-		entity.Text = text
+		try:
+			comment: Comment = await instance.comment(id=comment_id, fetch=True)
+			submission: Submission = await instance.submission(id=submission_id, fetch=True)
+			text = await tagging.tag_comment_with_sub(comment, submission)
+			entity.Text = text
+		except Exception as e:
+			logging.error(f":: An error has occurred while attempting to assemble history for {comment_id}")
+			continue
 		session.commit()
+
+	end_time = time.time()
+	duration = round(end_time - start_time, 1)
+	logging.info(f":: Total Duration for Processing: {duration}...Process Complete")
+
 	context.close_and_dispose(session)
 	await instance.close()
 
@@ -180,9 +193,72 @@ async def function_that_sends_thing_for_text_generation():
 	context: Context = Context()
 	session: Session = context.get_session()
 	bot_name = "PabloBot-GPT2"
-	results = context.get_items_ready_for_text_generation(bot_name, session, 10)
-	for elem in results:
-		logging.info(results)
+	statement = select(TrackingResponse)\
+		.join(TrackingSubmission, TrackingSubmission.Id == TrackingResponse.RedditId)\
+		.where(TrackingResponse.HasResponded == False)\
+		.where(TrackingResponse.Text == None)\
+		.where(TrackingSubmission.Text != None)\
+		.where(TrackingResponse.BotName == bot_name)\
+		.order_by(desc(TrackingResponse.InitialTimeSubmitted))\
+		.limit(10)
+
+	submission_result = list(session.scalars(statement))
+	messages = []
+	for elem in submission_result:
+		submission_text = elem.Submission.Text
+		message: TextGenerationMessage = TextGenerationMessage(elem.Id, submission_text, bot_name)
+		messages.append(message.to_string())
+
+	statement = select(TrackingResponse)\
+		.join(TrackingComment, TrackingComment.Id == TrackingResponse.RedditId)\
+		.where(TrackingResponse.HasResponded == False)\
+		.where(TrackingResponse.Text == None)\
+		.where(TrackingComment.Text != None)\
+		.where(TrackingResponse.BotName == bot_name)\
+		.order_by(desc(TrackingResponse.InitialTimeSubmitted))\
+		.limit(10)
+
+	comment_result = list(session.scalars(statement))
+	for elem in comment_result:
+		comment_text = elem.Comment.Text
+		message: TextGenerationMessage = TextGenerationMessage(elem.Id, comment_text, bot_name)
+		messages.append(message.to_string())
+
+	print(messages)
+
+def get_pending_submissions(context: Context):
+	session: context.get_session()
+
+
+async def text_generation_function():
+	logging.info(f":: Text Response Generation Invocation Worker")
+	message_json = {
+		"botName": "ChadNoctorBot-GPT2",
+		"prompt": "<|soss r/BootyTalk|><|sot|>Does anyone know how to make a candle for men?<|eot|><|sost|>[removed][View Poll]<|eost|>",
+		"replyId": "ChadNoctorBot-GPT2|wby6v6"
+	}
+	bot_name = message_json['botName']
+	prompt = message_json['prompt']
+	tracking_id = message_json['replyId']
+
+	context: Context = Context()
+	session: Session = context.get_session()
+	model_text_generator: ModelTextGenerator = ModelTextGenerator()
+
+	try:
+		entity: TrackingResponse = session.get(TrackingResponse, tracking_id)
+		if entity is None:
+			logging.info(f":: No entity present for Id: {tracking_id}")
+			return
+
+		result = model_text_generator.generate_text_with_no_wrapper(bot_name, prompt)
+
+		entity.Text = result
+
+		session.commit()
+	finally:
+		context.close_and_dispose(session)
+
 
 
 if __name__ == '__main__':

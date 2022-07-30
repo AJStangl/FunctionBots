@@ -47,11 +47,14 @@ class BotConfiguration(Base):
 class TrackingResponse(Base):
 	__tablename__ = "TrackingResponse"
 	Id = Column(Text, primary_key=True)
-	SubmissionId = Column(Text)
-	CommentId = Column(Text, ForeignKey("TrackingComment.Id"))
+	RedditId = Column(Text, ForeignKey("TrackingSubmission.Id"), ForeignKey("TrackingComment.Id"))
 	HasResponded = Column(Boolean)
+	InitialTimeSubmitted = Column(TIMESTAMP)
 	DateCreated = Column(TIMESTAMP)
 	DateUpdated = Column(TIMESTAMP)
 	BotName = Column(Text)
 	Text = Column(Text)
+	Ignore = Column(Boolean)
+	Submission = relationship("TrackingSubmission", foreign_keys=[RedditId])
+	Comment = relationship("TrackingComment", foreign_keys=[RedditId])
 

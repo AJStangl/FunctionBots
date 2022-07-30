@@ -15,7 +15,7 @@ class ModelTextGenerator(ServiceContainer):
 		super().__init__()
 		self.text_generation_parameters = {
 			'max_length': 1024,
-			'num_return_sequences': 5,
+			'num_return_sequences': 1,
 			'prompt': None,
 			'temperature': 0.8,
 			'top_k': 40,

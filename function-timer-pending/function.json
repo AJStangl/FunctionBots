@@ -1,0 +1,20 @@
+{
+  "scriptFile": "__init__.py",
+  "bindings": [
+    {
+      "name": "initializingTimer",
+      "type": "timerTrigger",
+      "direction": "in",
+      "schedule": "0 0/1 * * * *",
+      "monitor": true,
+      "runOnStartUp": true
+    },
+    {
+      "type": "queue",
+      "direction": "out",
+      "name": "msg",
+      "queueName": "worker-queue",
+      "connection": "AzureWebJobsStorage"
+    }
+  ]
+}
