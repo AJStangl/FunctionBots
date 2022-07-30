@@ -74,6 +74,7 @@ async def add_submission_to_table(submission: Submission, context: Context, bots
 			tracking_response.InitialTimeSubmitted = datetime.fromtimestamp(submission.created_utc)
 			tracking_response.DateCreated = datetime.now()
 			tracking_response.DateUpdated = datetime.now()
+			tracking_response.InFlight = False
 			tracking_response.Ignore = False
 			context.add(tracking_response, session)
 		context.close_and_dispose(session)
@@ -107,6 +108,7 @@ async def add_comment_to_table(comment: Comment, context: Context, bots: [BotCon
 			tracking_response.InitialTimeSubmitted = datetime.fromtimestamp(comment.created_utc)
 			tracking_response.DateCreated = datetime.now()
 			tracking_response.DateUpdated = datetime.now()
+			tracking_response.InFlight = False
 			tracking_response.Ignore = False
 			context.add(tracking_response, session)
 		context.close_and_dispose(session)
