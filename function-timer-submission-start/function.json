@@ -5,8 +5,9 @@
       "name": "submissionTimer",
       "type": "timerTrigger",
       "direction": "in",
-      "schedule": "0 0 0/12 * * *",
-      "monitor": true
+      "schedule": "0 0 0/1 * * *",
+      "monitor": true,
+      "runOnStartUp": true
     },
     {
       "type": "queue",

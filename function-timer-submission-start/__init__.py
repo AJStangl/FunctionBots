@@ -21,5 +21,7 @@ async def main(submissionTimer: func.TimerRequest, responseMessage: func.Out[typ
 				"SubReddit": sub
 			}
 			messages.append(json.dumps(message))
-	responseMessage.set(messages)
+
+	final_message = random.choice(messages)
+	responseMessage.set([final_message])
 	return None

@@ -32,7 +32,10 @@ class ModelTextGenerator(ServiceContainer):
 
 			tokenizer = GPT2Tokenizer.from_pretrained(bot_config.Model)
 
-			devices = [torch.device("cuda:0" if torch.cuda.is_available() else "cpu"), torch.device("cuda:1" if torch.cuda.is_available() else "cpu")]
+			devices = [
+				torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+				torch.device("cuda:1" if torch.cuda.is_available() else "cpu"),
+				torch.device("cuda:2" if torch.cuda.is_available() else "cpu")]
 
 			device = random.choice(devices)
 
@@ -78,7 +81,20 @@ class ModelTextGenerator(ServiceContainer):
 			logging.error(f":: An error has occurred while attempting to generate text")
 			logging.error(e)
 		finally:
-			pass
+			if model is not None:
+				model = model.to("cpu")
+				del model
+			if encoded_prompt is not None:
+				encoded_prompt = encoded_prompt.to("cpu")
+				del encoded_prompt
+			torch.cuda.empty_cache()
+
+	def filtered_to_cuda(self, model: nn.Module) -> None:
+		def conditional_cuda(x):
+			if x.device.type != "cuda":
+				return x.to("cuda")
+			else:
+				return x
 
 	@staticmethod
 	def validate_text_tensor(model_path, prompt):

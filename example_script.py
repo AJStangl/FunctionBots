@@ -97,6 +97,7 @@ async def add_submission_to_table(submission: Submission, context: Context) -> U
 
 	context.close_and_dispose(session)
 
+
 async def add_comment_to_table(comment: Comment, context: Context) -> Union[TrackingComment, None]:
 	bots: [BotConfiguration] = BotConfigurationManager().get_bot_name_list()
 	session: Session = context.get_session()
@@ -155,11 +156,11 @@ async def function_for_general_polling_on_timer():
 
 
 async def function_that_handles_comment_collation_and_initialization():
-	instance = RedditManager.get_praw_instance_for_bot("PabloBot-GPT2")
+	instance: Reddit = RedditManager.get_praw_instance_for_bot("PabloBot-GPT2")
 	tagging: Tagging = Tagging(instance)
 	context: Context = Context()
-	session = context.get_session()
-	entities = context.get_comments_for_processing(session, limit=30)
+	session: Session = context.get_session()
+	entities: [] = context.get_comments_for_processing(session, limit=30)
 	logging.info(f":: Processing {len(entities)} Comment Text Values")
 	comment_ids = []
 	for entity in entities:

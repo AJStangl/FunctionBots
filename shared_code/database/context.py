@@ -21,7 +21,8 @@ class Context:
 		session.close()
 		self._engine.dispose()
 
-	def add(self, entity: Base, session: Session) -> Union[TrackingSubmission, TrackingComment, None]:
+	@staticmethod
+	def add(entity: Base, session: Session) -> Union[TrackingSubmission, TrackingComment, None]:
 		try:
 			existing_record = session.get(type(entity), entity.Id)
 			if existing_record:
@@ -50,7 +51,8 @@ class Context:
 		finally:
 			pass
 
-	def get_comments_for_processing(self, session: Session, limit=int):
+	@staticmethod
+	def get_comments_for_processing(session: Session, limit=int):
 		try:
 			result = list(session.scalars(
 				select(TrackingComment)
@@ -64,7 +66,8 @@ class Context:
 		finally:
 			pass
 
-	def get_items_ready_for_text_generation(self, bot_name: str, session: Session, limit=int):
+	@staticmethod
+	def get_items_ready_for_text_generation(bot_name: str, session: Session, limit=int):
 		try:
 			statement = select(TrackingResponse)\
 				.join(TrackingComment)\
@@ -74,32 +77,6 @@ class Context:
 				.where(TrackingComment.Text != '')\
 				.order_by(desc(TrackingComment.DateCreated))\
 				.limit(limit)
-# 			select *
-# 			from
-# 			"TrackingResponse"
-# 			join
-# 			"TrackingComment"
-# 			comment
-# 			on
-# 			"TrackingResponse".
-# 			"CommentId" = comment.
-# 			"Id"
-# 		where
-# 		"TrackingResponse".
-# 		"BotName" = 'PabloBot-GPT2'
-# 		and comment.
-# 		"Author" != 'PabloBot-GPT2'
-# 		and "TrackingResponse".
-# 		"HasResponded" = false
-# 		and comment.
-# 		"Text" != ''
-#
-#
-# order
-# by
-# comment.
-# "CommentTimestamp"
-# desc;
 			print(statement)
 
 			return list(session.scalars(statement))
