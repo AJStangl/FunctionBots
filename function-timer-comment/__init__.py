@@ -16,7 +16,7 @@ async def main(initializingTimer: func.TimerRequest) -> None:
 	tagging: Tagging = Tagging(instance)
 	context: Context = Context()
 	session: Session = context.get_session()
-	entities: [] = context.get_comments_for_processing(session, limit=100)
+	entities: [] = context.get_comments_for_processing(session, limit=30)
 
 	logging.info(f":: Processing {len(entities)} Comment Text Values")
 	comment_ids = []

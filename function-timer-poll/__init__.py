@@ -26,7 +26,7 @@ async def main(initializingTimer: func.TimerRequest) -> None:
 	submission_stream = subreddit.stream.submissions()
 	time_out_for_iteration: float = float(os.environ["TimeoutForSearchIterator"])
 
-	logging.info(f":: Streaming Comments For {time_out_for_iteration} seconds")
+	logging.info(f":: Streaming Comments and Submissions For {time_out_for_iteration} seconds")
 	start_time = time.time()
 	async for praw_item in MergeAsyncIterator(submission_stream, comment_stream, time_out=time_out_for_iteration):
 		if praw_item is None:

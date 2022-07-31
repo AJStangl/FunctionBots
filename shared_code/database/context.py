@@ -37,49 +37,15 @@ class Context:
 			pass
 
 	@staticmethod
-	def add_with_tracking(entity: Base, trackingResponse: TrackingResponse, session: Session) -> Union[TrackingSubmission, TrackingComment, None]:
-		try:
-			existing_record = session.get(type(entity), entity.Id)
-			if existing_record:
-				logging.debug(f":: Record Exists for type {type(entity)} and Id {entity.Id}")
-				return existing_record
-			session.add(entity)
-			session.commit()
-			return existing_record
-		except Exception as e:
-			logging.error(f":: An exception has occurred in method `Add` with message {e}")
-		finally:
-			pass
-
-	@staticmethod
 	def get_comments_for_processing(session: Session, limit=int):
 		try:
 			result = list(session.scalars(
 				select(TrackingComment)
 				.where(TrackingComment.Text == "")
-				.order_by(desc(TrackingComment.DateCreated))
+				.order_by(desc(TrackingComment.CommentTimestamp))
 				.limit(limit))
 			)
 			return result
-		except Exception as e:
-			logging.error(f":: An exception has occurred in method `Add` with message {e}")
-		finally:
-			pass
-
-	@staticmethod
-	def get_items_ready_for_text_generation(bot_name: str, session: Session, limit=int):
-		try:
-			statement = select(TrackingResponse)\
-				.join(TrackingComment)\
-				.where(TrackingResponse.BotName == bot_name)\
-				.where(TrackingComment.Author != bot_name)\
-				.where(TrackingResponse.HasResponded == False)\
-				.where(TrackingComment.Text != '')\
-				.order_by(desc(TrackingComment.DateCreated))\
-				.limit(limit)
-			print(statement)
-
-			return list(session.scalars(statement))
 		except Exception as e:
 			logging.error(f":: An exception has occurred in method `Add` with message {e}")
 		finally:

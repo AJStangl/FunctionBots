@@ -259,6 +259,12 @@ async def text_generation_function():
 	finally:
 		context.close_and_dispose(session)
 
+def fix_or_throw(generated_text):
+	import re
+	if "[removed]" in generated_text or "[deleted]" in generated_text:
+		logging.info(f"Generated Text was [removed], this text will be rejected.")
+		assert Exception("Bad Text")
+	return re.sub(r'(\<\|[\w\/ ]*\|\>)', ' ', generated_text).strip()
 
 
 if __name__ == '__main__':

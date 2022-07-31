@@ -1,7 +1,10 @@
+import codecs
 import logging
 import random
 import time
+import re
 
+from ftfy import ftfy, fix_text
 from torch import nn
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 import torch
@@ -18,10 +21,10 @@ class ModelTextGenerator(ServiceContainer):
 			'num_return_sequences': 1,
 			'prompt': None,
 			'temperature': 0.8,
-			'top_k': 40,
-			'top_p': .75,
+			'top_k': 50,
+			'top_p': 0.95,
 			'do_sample': True,
-			'repetition_penalty': 1.08,
+			'repetition_penalty': 1.5,
 			'stop_token': '<|endoftext|>'
 		}
 
@@ -51,13 +54,11 @@ class ModelTextGenerator(ServiceContainer):
 
 			output_sequences = model.generate(
 				input_ids=encoded_prompt,
+				do_sample=self.text_generation_parameters['do_sample'],
 				max_length=self.text_generation_parameters['max_length'],
-				temperature=self.text_generation_parameters['temperature'],
 				top_k=self.text_generation_parameters['top_k'],
 				top_p=self.text_generation_parameters['top_p'],
-				repetition_penalty=self.text_generation_parameters['repetition_penalty'],
-				do_sample=self.text_generation_parameters['do_sample'],
-				num_return_sequences=self.text_generation_parameters['num_return_sequences'],
+				temperature=self.text_generation_parameters['temperature'],
 			)
 
 			text_generations = []
@@ -69,6 +70,10 @@ class ModelTextGenerator(ServiceContainer):
 
 			end_time = time.time()
 			duration = round(end_time - start_time, 1)
+
+			generations = [self.fix_or_throw(item) for item in text_generations]
+			if len(generations) == 0:
+				assert Exception("No text generated throwing for re-try")
 
 			logging.info(f'{len(text_generations)} sample(s) of text generated in {duration} seconds.')
 
@@ -108,3 +113,11 @@ class ModelTextGenerator(ServiceContainer):
 	@staticmethod
 	def clean_text_generation(text_generation: str):
 		return Tagging.remove_tags_from_string(text_generation)
+
+
+	def fix_or_throw(self, generated_text):
+		if "[removed]" in generated_text or "[deleted]" in generated_text:
+			logging.info(f"Generated Text was [removed], this text will be rejected.")
+			return None
+		cleaned = re.sub(r'(\<\|[\w\/ ]*\|\>)', ' ', generated_text).strip()
+		return cleaned
