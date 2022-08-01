@@ -1,10 +1,8 @@
 import logging
-import random
 import time
 
-from torch import nn
-from transformers import GPT2Tokenizer, GPT2LMHeadModel
 import torch
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
 
 from shared_code.helpers.tagging import Tagging
 from shared_code.services.service_container import ServiceContainer
@@ -15,30 +13,24 @@ class ModelTextGenerator(ServiceContainer):
 		super().__init__()
 		self.text_generation_parameters = {
 			'max_length': 1024,
-			'num_return_sequences': 5,
+			'num_return_sequences': 1,
 			'prompt': None,
 			'temperature': 0.8,
 			'top_k': 40,
-			'top_p': .75,
+			'top_p': .95,
 			'do_sample': True,
 			'repetition_penalty': 1.08,
 			'stop_token': '<|endoftext|>'
 		}
 
-	def generate_text_with_no_wrapper(self, bot_username: str, prompt_text: str):
+	def generate_text_with_no_wrapper(self, bot_username: str, prompt_text: str, cuda_device: int = 0):
 		model = None
 		encoded_prompt = None
 		start_time = time.time()
 		try:
 			bot_config = self.bot_configuration_manager.get_configuration_by_name(bot_username)
 
-			devices = [
-				torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
-				torch.device("cuda:1" if torch.cuda.is_available() else "cpu"),
-				torch.device("cuda:2" if torch.cuda.is_available() else "cpu")]
-
-			random_device_index = str(random.randint(0, torch.cuda.device_count() - 1))
-			device = torch.device(f"cuda:{random_device_index}")
+			device = torch.device(f"cuda:{cuda_device}")
 
 			tokenizer = GPT2Tokenizer.from_pretrained(bot_config.Model)
 

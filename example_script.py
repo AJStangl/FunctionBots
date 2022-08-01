@@ -1,36 +1,20 @@
 import asyncio
+import logging
 import os
 import time
-import random
-from typing import Optional, Union
-from asyncpraw.models import Submission, Comment
-from asyncpraw.models.comment_forest import CommentForest
-from asyncpraw.reddit import Redditor, Reddit, Subreddit
-import logging
-import torch
-from sqlalchemy import create_engine, insert
-from sqlalchemy.orm import Session
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
-from torch import Tensor
-from transformers import GPT2Model
-from simpletransformers.language_generation import LanguageGenerationModel
 from datetime import datetime
-import shared_code
+from typing import Union
+
+from asyncpraw.models import Submission, Comment
+from asyncpraw.reddit import Reddit
+from sqlalchemy.orm import Session
+
 from shared_code.database.context import Context
-from shared_code.database.entities import Base, TrackingSubmission, TrackingComment, TrackingResponse
-from shared_code.database.repository import DataRepository
-from shared_code.generators.text.model_text_generator import ModelTextGenerator
+from shared_code.database.entities import TrackingSubmission, TrackingComment, TrackingResponse
 from shared_code.helpers.merge_async_iterator import MergeAsyncIterator
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.helpers.tagging import Tagging
 from shared_code.models.bot_configuration import BotConfigurationManager, BotConfiguration
-from shared_code.services.main_run_service import BotMonitorService
-from shared_code.services.new_submission_service import SubmissionService
-from shared_code.services.reply_service import ReplyService
-from shared_code.services.text_generation import TextGenerationService
-from shared_code.storage_proxies.service_proxy import QueueServiceProxy
-import asyncio
-from async_timeout import timeout
 
 
 def tag_submission(submission: Submission, tag_override: str = os.environ["SubNameOverride"]) -> str:

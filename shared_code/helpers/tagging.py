@@ -2,12 +2,10 @@ import codecs
 import logging
 import os
 import re
-from typing import Union
 
-import asyncpraw
 import ftfy
 from asyncpraw import Reddit
-from asyncpraw.models import Submission, Comment, Redditor
+from asyncpraw.models import Submission, Comment
 from asyncpraw.models.reddit.base import RedditBase
 
 

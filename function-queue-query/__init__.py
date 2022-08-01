@@ -1,6 +1,3 @@
-import asyncio
-import logging
-
 import azure.functions as func
 
 from shared_code.services.main_run_service import BotMonitorService

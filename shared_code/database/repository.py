@@ -70,17 +70,9 @@ class DataRepository:
 			session.close_all()
 			self._engine.dispose()
 
-	def update_entity(self, entity):
-		session = Session(self._engine)
-		try:
-			props = entity.as_dict()
-			session.query(TableRecord). \
-				filter(TableRecord.Id == entity.Id). \
-				update(props)
-			session.commit()
-		finally:
-			session.close()
-			self._engine.dispose()
+	def get_by_id_with_session(self, session: Session, id: str) -> TableRecord:
+		return session.get(TableRecord, id)
+
 
 	def get_entity_by_id(self, Id: str) -> TableRecord:
 		session = Session(self._engine)

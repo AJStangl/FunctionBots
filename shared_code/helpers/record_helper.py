@@ -9,7 +9,7 @@ from shared_code.database.table_record import TableRecord
 
 class TableHelper:
 	@staticmethod
-	def map_base_to_message(reddit_id: str, sub_reddit: str, input_type: str, submitted_date: int, author: str, responding_bot: str, time_in_hours: int, reply_probability: int, url: str) -> TableRecord:
+	def map_base_to_message(reddit_id: str, sub_reddit: str, input_type: str, submitted_date: datetime.datetime, author: str, responding_bot: str, reply_probability: int, url: str) -> TableRecord:
 		set_id = f"{reddit_id}|{responding_bot}"
 		record = TableRecord()
 		record.Id = set_id
@@ -17,7 +17,6 @@ class TableHelper:
 		record.Subreddit = sub_reddit
 		record.InputType = input_type
 		record.ContentDateSubmitted = submitted_date
-		record.TimeInHours = time_in_hours
 		record.Author = author
 		record.RespondingBot = responding_bot
 		record.TextGenerationPrompt = ""
@@ -25,7 +24,6 @@ class TableHelper:
 		record.HasResponded = False
 		record.Status = 0
 		record.ReplyProbability = reply_probability
-		record.DateTimeCreated = str(datetime.datetime.now())
 		record.DateTimeSubmitted = None
 		record.Url = url
 		return record

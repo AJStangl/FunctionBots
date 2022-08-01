@@ -3,14 +3,15 @@ import json
 import logging
 import os
 import random
+import time
 from datetime import datetime, timedelta
 from typing import Optional
-import time
+
 import azure.functions as func
 from asyncpraw.models import Submission, Subreddit
-from asyncpraw.models.comment_forest import CommentForest
-from asyncpraw.reddit import Redditor, Comment, Reddit
+from asyncpraw.reddit import Redditor, Comment
 from azure.storage.queue import TextBase64EncodePolicy
+from sqlalchemy.orm import Session
 
 from shared_code.database.table_record import TableRecord
 from shared_code.helpers.merge_async_iterator import MergeAsyncIterator
@@ -23,7 +24,7 @@ class BotMonitorService(ServiceContainer):
 	def __init__(self):
 		super().__init__()
 		self.message_live_in_hours = 60 * 60 * 8
-		self.all_workers: [str] = ["worker-1"]
+		self.all_workers: [str] = ["worker-1", "worker-2", "worker-3"]
 
 	async def invoke_reddit_polling(self, message: func.QueueMessage) -> None:
 		logging.info(f":: Starting BotMonitorService invoke_reddit_polling")
@@ -55,7 +56,7 @@ class BotMonitorService(ServiceContainer):
 					if praw_item is None:
 						break
 					if isinstance(praw_item, Comment):
-						logging.debug(f":: Handling {type(praw_item).__name__} {praw_item} from stream")
+						logging.info(f":: Handling {type(praw_item).__name__} {praw_item} from stream")
 						comment: Comment = praw_item
 						await self.insert_comment_to_table(comment, user)
 
@@ -83,13 +84,11 @@ class BotMonitorService(ServiceContainer):
 			bot_name = bot_config.Name
 			self.set_reddit_instance(bot_name)
 
-
 			pending_submissions = self.repository.search_for_pending("Submission", bot_name, limit=100)
 			logging.info(f":: Handling submissions for {bot_name}")
 			for record in pending_submissions:
 				await self.handle_incoming_record(record)
 			logging.info(f":: Submission Handling Complete for {bot_name}")
-
 			logging.info(f":: Fetching latest Comments For {bot_name}")
 			pending_comments = self.repository.search_for_pending("Comment", bot_name, limit=100)
 
@@ -111,43 +110,46 @@ class BotMonitorService(ServiceContainer):
 	async def handle_incoming_record(self, record):
 		worker: str = random.choice(self.all_workers)
 		queue = self.queue_proxy.service.get_queue_client(worker, message_encode_policy=TextBase64EncodePolicy())
+		session: Session = self.repository.get_session()
 		try:
 			record = record['TableRecord']
-			record.Status = 1
-			logging.debug(f":: starting input processing on {record}")
+			entity = self.repository.get_by_id_with_session(session, record.Id)
+			entity.Status = 1
+			logging.info(f":: starting input processing on {entity.Id}")
 			try:
 				processed = await self.process_input(record)
-				if processed is None:
+				if processed is None or processed == "":
+					logging.info(f":: Message Has nothing processed for record {record.Id}")
 					return None
 			except Exception as e:
 				logging.error(f":: Exception occurred while process_input {e}")
 				return None
 
-			logging.debug(f":: completed input processing on {record}")
-
-			record.TextGenerationPrompt = processed
+			entity.TextGenerationPrompt = processed
 			max_probability = int(os.environ["MaxProbability"])
 			reply_probability_target: int = random.randint(0, max_probability)
 			if record.InputType == "Submission":
+				session.commit()
 				logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation to {record.Subreddit} on {worker}")
-				queue.send_message(json.dumps(record.as_dict()), time_to_live=self.message_live_in_hours)
-				self.repository.update_entity(record)
+				foo = self.table_to_dict(entity)
+				queue.send_message(json.dumps(foo), time_to_live=self.message_live_in_hours)
 				return None
 
-			# int(os.environ["MaxProbability"])
 			if record.ReplyProbability >= max_probability and record.InputType == "Comment":
+				session.commit()
 				logging.info(f":: Sending {record.InputType} for {record.RespondingBot} to Queue For Model Text Generation to {record.Subreddit} on {worker}")
-				queue.send_message(json.dumps(record.as_dict()), time_to_live=self.message_live_in_hours)
-				self.repository.update_entity(record)
+				foo = self.table_to_dict(entity)
+				queue.send_message(json.dumps(foo), time_to_live=self.message_live_in_hours)
 				return None
 
 			else:
 				logging.debug(f":: Ignoring {record.InputType} for {record.RespondingBot} has a Probability of {record.ReplyProbability} but needs {reply_probability_target}")
-				record.Status = 2
-				self.repository.update_entity(record)
+				entity.Status = 2
+				session.commit()
 				return None
 		finally:
 			queue.close()
+			session.close()
 
 	async def process_input(self, record: TableRecord) -> Optional[str]:
 		if record.InputType == "Submission":
@@ -213,8 +215,7 @@ class BotMonitorService(ServiceContainer):
 			reddit_id=submission.id,
 			sub_reddit=submission.subreddit.display_name,
 			input_type="Submission",
-			time_in_hours=self.timestamp_to_hours(submission.created),
-			submitted_date=submission.created,
+			submitted_date=datetime.fromtimestamp(submission.created_utc),
 			author=getattr(submission.author, 'name', ''),
 			responding_bot=user.name,
 			reply_probability=probability,
@@ -242,17 +243,14 @@ class BotMonitorService(ServiceContainer):
 			logging.error(f":: Error Attempting To Get Submission for entity {e}")
 			return None
 
-
-		logging.debug(f":: {comment.id} {comment.author} {user.name} {submission.subreddit}")
 		logging.debug(f":: Mapping Input {comment.id} for {comment.subreddit.display_name}")
 		mapped_input: TableRecord = self.table_helper.map_base_to_message(
 			reddit_id=comment.id,
 			sub_reddit=comment.subreddit.display_name,
 			input_type="Comment",
-			submitted_date=submission.created,
+			submitted_date=datetime.fromtimestamp(comment.created_utc),
 			author=getattr(comment.author, 'name', ''),
 			responding_bot=user.name,
-			time_in_hours=self.timestamp_to_hours(comment.created),
 			reply_probability=probability,
 			url=comment.permalink)
 
@@ -260,11 +258,6 @@ class BotMonitorService(ServiceContainer):
 		if entity:
 			logging.info(f":: Inserting Record comment {comment.id} with probability {probability} for {user.name}")
 			return entity
-
-	@staticmethod
-	def timestamp_to_hours(utc_timestamp) -> int:
-		return int(
-			(datetime.utcnow() - datetime.fromtimestamp(utc_timestamp)).total_seconds() / 3600) - 4
 
 	@staticmethod
 	def chain_listing_generators(*iterables):
@@ -288,7 +281,18 @@ class BotMonitorService(ServiceContainer):
 		return incoming_message
 
 	@staticmethod
-	def handle_forest_message(message) -> dict:
-		message_json = message.get_body().decode('utf-8')
-		incoming_message = json.loads(message_json)
-		return incoming_message
+	def table_to_dict(tableRecord: TableRecord) -> dict:
+		return {
+			"Id": tableRecord.Id,
+			"RedditId": tableRecord.RedditId,
+			"Subreddit":  tableRecord.Subreddit,
+			"InputType":  tableRecord.InputType,
+			"Author":  tableRecord.Author,
+			"RespondingBot":  tableRecord.RespondingBot,
+			"TextGenerationPrompt":  tableRecord.TextGenerationPrompt,
+			"TextGenerationResponse":  tableRecord.TextGenerationResponse,
+			"HasResponded":  tableRecord.HasResponded,
+			"Status":  tableRecord.Status,
+			"ReplyProbability":  tableRecord.ReplyProbability,
+			"Url":  tableRecord.Url
+		}
