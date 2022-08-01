@@ -34,11 +34,12 @@ async def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> No
 
 		entity.Text = response
 
+		session.commit()
+
 		reply_message: ReplyMessage = ReplyMessage(bot_name, prompt, response, reddit_type, reddit_id, tracking_id)
 
 		responseMessage.set(reply_message.to_string())
 
-		session.commit()
 	finally:
 		context.close_and_dispose(session)
 

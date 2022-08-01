@@ -11,7 +11,7 @@ from shared_code.models.reply_message import ReplyMessage
 from shared_code.services.text_generation import TextGenerationService
 
 
-async def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> None:
+def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> None:
 	message_json = TableHelper.handle_message_generic(message)
 	bot_name: str = message_json['BotName']
 	prompt: str = message_json['Prompt']
@@ -30,15 +30,20 @@ async def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> No
 			logging.info(f":: No entity present for Id: {tracking_id}")
 			return
 
-		response = model_text_generator.generate_text_with_no_wrapper(bot_name, prompt, device_id="0")
+		response = model_text_generator.generate_text_with_no_wrapper(bot_name, prompt, "0")
 
 		entity.Text = response
+
+		if response is None:
+			raise Exception("No response generated")
+			return
+
+		session.commit()
 
 		reply_message: ReplyMessage = ReplyMessage(bot_name, prompt, response, reddit_type, reddit_id, tracking_id)
 
 		responseMessage.set(reply_message.to_string())
 
-		session.commit()
 	finally:
 		context.close_and_dispose(session)
 
