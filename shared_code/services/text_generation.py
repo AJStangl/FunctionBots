@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from shared_code.database.table_record import TableRecord
 from shared_code.generators.text.model_text_generator import ModelTextGenerator
-from shared_code.helpers.record_helper import TableHelper
+from shared_code.helpers.mapping_models import Mapper
 from shared_code.services.service_container import ServiceContainer
 
 
@@ -19,7 +19,7 @@ class TextGenerationService(ServiceContainer):
 		session: Session = self.repository.get_session()
 		try:
 			logging.info(f"Invoking Text Generation for Message ID: {message.id}")
-			incoming_message: TableRecord = TableHelper.handle_fucking_bullshit(message)
+			incoming_message: TableRecord = Mapper.handle_fucking_bullshit(message)
 
 			bot_name = incoming_message["RespondingBot"]
 
@@ -40,20 +40,20 @@ class TextGenerationService(ServiceContainer):
 			entity.TextGenerationResponse = result
 
 			session.commit()
-			
+
 			foo = {
-				"Id" : entity.Id,
-				"RedditId" : entity.RedditId,
+				"Id": entity.Id,
+				"RedditId": entity.RedditId,
 				"Subreddit": entity.Subreddit,
-				"InputType" : entity.InputType,
-				"Author" : entity.Author,
-				"RespondingBot" : entity.RespondingBot,
-				"TextGenerationPrompt" : entity.TextGenerationPrompt,
-				"TextGenerationResponse" : entity.TextGenerationResponse,
-				"HasResponded" : entity.HasResponded,
-				"Status" : entity.Status,
-				"ReplyProbability" : entity.ReplyProbability,
-				"Url" : entity.Url
+				"InputType": entity.InputType,
+				"Author": entity.Author,
+				"RespondingBot": entity.RespondingBot,
+				"TextGenerationPrompt": entity.TextGenerationPrompt,
+				"TextGenerationResponse": entity.TextGenerationResponse,
+				"HasResponded": entity.HasResponded,
+				"Status": entity.Status,
+				"ReplyProbability": entity.ReplyProbability,
+				"Url": entity.Url
 			}
 
 			return json.dumps(foo)

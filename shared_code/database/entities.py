@@ -1,6 +1,6 @@
-from sqlalchemy import Column, ForeignKey, Integer, Table, Text, TIMESTAMP, Boolean
+from sqlalchemy import Column, ForeignKey, Table, Text, TIMESTAMP, Boolean
 from sqlalchemy.orm import declarative_base, relationship
-import sqlalchemy as sa
+
 Base = declarative_base()
 
 association_table = Table(
@@ -33,16 +33,6 @@ class TrackingComment(Base):
 	CommentTimestamp = Column(TIMESTAMP)
 	DateCreated = Column(TIMESTAMP)
 	DateUpdated = Column(TIMESTAMP)
-
-
-class BotConfiguration(Base):
-	__tablename__ = "BotConfiguration"
-	Id = Column(Integer, primary_key=True)
-	Name = Column(Text)
-	ModelPath = Column(Text)
-	DateCreated = Column(TIMESTAMP)
-	DateUpdated = Column(TIMESTAMP)
-
 
 class TrackingResponse(Base):
 	__tablename__ = "TrackingResponse"

@@ -1,9 +1,7 @@
-import logging
 import typing
 
 import azure.functions as func
 
-from shared_code.models.bot_configuration import BotConfigurationManager
 from shared_code.services.initialize_bots import StartService
 
 

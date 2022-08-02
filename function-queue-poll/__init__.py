@@ -1,9 +1,9 @@
 import azure.functions as func
 
-from shared_code.services.main_run_service import BotMonitorService
+from shared_code.services.invoke_reddit_polling import InvokePollingService
 
 
 async def main(message: func.QueueMessage) -> None:
-	bot_run_service: BotMonitorService = BotMonitorService()
-	await bot_run_service.invoke_reddit_polling(message)
+	polling_service: InvokePollingService = InvokePollingService()
+	await polling_service.invoke_reddit_polling(message)
 	return None

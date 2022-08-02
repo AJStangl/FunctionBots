@@ -1,15 +1,14 @@
 import datetime
 import logging
 
-from azure.core.paging import ItemPaged
-from azure.storage.queue import QueueServiceClient, QueueClient, QueueMessage
 from asyncpraw import Reddit
 from asyncpraw.models import Submission, Comment
+from azure.storage.queue import QueueServiceClient, QueueClient
 from sqlalchemy.orm import Session
 
-from shared_code.database.table_record import TableRecord
-from shared_code.helpers.record_helper import TableHelper
 from shared_code.database.repository import DataRepository
+from shared_code.database.table_record import TableRecord
+from shared_code.helpers.mapping_models import Mapper
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.helpers.tagging import Tagging
 from shared_code.storage_proxies.service_proxy import QueueServiceProxy
@@ -29,7 +28,7 @@ class ReplyService:
 		session: Session = self.repository.get_session()
 		manager: RedditManager = RedditManager()
 
-		record: TableRecord = TableHelper.handle_fucking_bullshit(message)
+		record: TableRecord = Mapper.handle_fucking_bullshit(message)
 
 		prompt: str = record["TextGenerationPrompt"]
 

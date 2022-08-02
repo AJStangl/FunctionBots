@@ -5,7 +5,7 @@ from asyncpraw import Reddit
 
 from shared_code.database.repository import DataRepository
 from shared_code.helpers.image_scrapper import ImageScrapper
-from shared_code.helpers.record_helper import TableHelper
+from shared_code.helpers.mapping_models import Mapper
 from shared_code.helpers.reddit_helper import RedditManager
 from shared_code.helpers.reply_logic import ReplyLogic
 from shared_code.helpers.tagging import Tagging
@@ -22,7 +22,7 @@ class ServiceContainer(object):
 		self.queue_proxy: QueueServiceProxy = QueueServiceProxy()
 		self.reply_service: ReplyService = ReplyService()
 		self.bot_configuration_manager: BotConfigurationManager = BotConfigurationManager()
-		self.table_helper: TableHelper = TableHelper()
+		self.table_helper: Mapper = Mapper()
 		self.scrapper: ImageScrapper = ImageScrapper()
 		self.reddit_instance: Optional[Reddit] = None
 		self.tagging: Optional[Tagging] = None

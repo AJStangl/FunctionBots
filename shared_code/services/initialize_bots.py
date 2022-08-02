@@ -2,7 +2,6 @@ import json
 import logging
 import random
 
-from shared_code.models.bot_configuration import BotConfigurationManager
 from shared_code.services.service_container import ServiceContainer
 
 

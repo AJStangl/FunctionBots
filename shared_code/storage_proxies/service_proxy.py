@@ -1,9 +1,8 @@
 import logging
 
-from azure.core.paging import ItemPaged
-from azure.storage.queue import QueueMessage, QueueServiceClient, TextBase64EncodePolicy, TextBase64DecodePolicy, \
-	QueueClient
 import azure.storage.queue
+from azure.core.paging import ItemPaged
+from azure.storage.queue import QueueMessage, QueueServiceClient, TextBase64EncodePolicy, QueueClient
 
 from shared_code.models.azure_configuration import FunctionAppConfiguration
 
