@@ -1,5 +1,6 @@
 import datetime
 import logging
+import re
 
 from asyncpraw import Reddit
 from asyncpraw.models import Submission, Comment
@@ -22,6 +23,10 @@ class ReplyService:
 		self.queue_service: QueueServiceClient = QueueServiceProxy().service
 		self.repository: DataRepository = DataRepository()
 		self.queue_client: QueueClient = self.queue_service.get_queue_client("reply-queue")
+
+	def remove_tags_from_string(self, input_string):
+		# Removes any <|sor u/user|>, <|sost|> etc from a string
+		return re.sub(r'(\<\|[\w\/ ]*\|\>)', ' ', input_string).strip()
 
 	async def handle_message(self, message):
 		self.logging.info(f":: Handling Messages From Iterator")
@@ -66,6 +71,7 @@ class ReplyService:
 					session.commit()
 					continue
 
+			body = self.remove_tags_from_string(body)
 			if entity.InputType == "Submission":
 				sub_instance: Submission = await reddit.submission(id=entity.RedditId)
 				logging.info(f":: Sending Out Reply To Submission - {entity.RedditId}")
@@ -80,6 +86,7 @@ class ReplyService:
 			if entity.InputType == "Comment":
 				logging.info(f":: Sending Out Reply To Comment - {entity.RedditId}")
 				comment_instance: Comment = await reddit.comment(id=entity.RedditId)
+
 				await comment_instance.reply(body)
 				entity.HasResponded = True
 				entity.Status = 4

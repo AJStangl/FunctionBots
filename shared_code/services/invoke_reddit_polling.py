@@ -6,6 +6,7 @@ from typing import Optional
 
 import azure.functions as func
 from asyncpraw.models import Redditor, Subreddit, Comment, Submission
+from sqlalchemy.orm import Session
 
 from shared_code.database.table_record import TableRecord
 from shared_code.helpers.mapping_models import Mapper
@@ -20,7 +21,6 @@ class InvokePollingService(ServiceContainer):
 
 	async def invoke_reddit_polling(self, message: func.QueueMessage) -> None:
 		logging.info(f":: Starting invoke_reddit_polling")
-
 		try:
 			incoming_message: BotConfiguration = Mapper.handle_message(message)
 
@@ -96,6 +96,7 @@ class InvokePollingService(ServiceContainer):
 			return entity
 
 	async def insert_comment_to_table(self, comment: Comment, user: Redditor) -> Optional[TableRecord]:
+		session: Session = self.repository.get_session()
 		existing = self.repository.get_entity_by_id(f"{comment.id}|{user.name}")
 		if existing:
 			return existing
@@ -121,8 +122,16 @@ class InvokePollingService(ServiceContainer):
 			responding_bot=user.name,
 			reply_probability=probability,
 			url=comment.permalink)
+		try:
+			session.add(mapped_input)
+			session.commit()
 
-		entity = self.repository.create_if_not_exist(mapped_input)
-		if entity:
 			logging.info(f":: Inserting Record comment {comment.id} with probability {probability} for {user.name}")
-			return entity
+			return mapped_input
+
+		except Exception as e:
+			logging.error(f":: An error has occurred while attempting to add {comment.id} for {user.name}")
+			return None
+
+		finally:
+			session.close()

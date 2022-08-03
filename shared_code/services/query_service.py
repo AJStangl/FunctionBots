@@ -7,6 +7,7 @@ from typing import Optional
 
 from asyncpraw.models import Comment, Submission
 from azure.storage.queue import TextBase64EncodePolicy
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from shared_code.database.table_record import TableRecord
@@ -22,19 +23,20 @@ class QueryService(ServiceContainer):
 		self.all_workers: [str] = ["worker-1", "worker-2", "worker-3"]
 
 	async def invoke_data_query(self, message) -> None:
-		logging.info(f":: Starting BotMonitorService invoke_data_query")
+		logging.info(f":: Starting QueryService invoke_data_query")
 		try:
 			bot_config: BotConfiguration = Mapper.handle_message(message)
 			bot_name = bot_config.Name
 			self.set_reddit_instance(bot_name)
 
-			pending_submissions = self.repository.search_for_pending("Submission", bot_name, limit=100)
+			pending_submissions = self.repository.search_for_pending("Submission", bot_name, limit=30)
 			logging.info(f":: Handling submissions for {bot_name}")
 			for record in pending_submissions:
 				await self.handle_incoming_record(record)
+
 			logging.info(f":: Submission Handling Complete for {bot_name}")
 			logging.info(f":: Fetching latest Comments For {bot_name}")
-			pending_comments = self.repository.search_for_pending("Comment", bot_name, limit=100)
+			pending_comments = self.repository.search_for_pending("Comment", bot_name, limit=30)
 
 			end_time = datetime.now() + timedelta(minutes=10)
 			logging.info(f":: Handling comments for {bot_name} - Attempting for {end_time}...")
@@ -75,6 +77,7 @@ class QueryService(ServiceContainer):
 					return None
 
 			entity.TextGenerationPrompt = processed
+			self.repository.update_comments_by_reddit_id(record.RedditId, processed, session)
 			max_probability = int(os.environ["MaxProbability"])
 			reply_probability_target: int = random.randint(0, max_probability)
 			if record.InputType == "Submission":

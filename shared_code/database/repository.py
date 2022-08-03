@@ -1,11 +1,12 @@
-import logging
 import os
-
+import logging
+from sqlalchemy import create_engine
+from sqlalchemy import desc
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+
 from shared_code.database.table_record import TableRecord
-from sqlalchemy import create_engine
+
 
 class DataRepository:
 	def __init__(self):
@@ -73,7 +74,18 @@ class DataRepository:
 	def get_by_id_with_session(self, session: Session, id: str) -> TableRecord:
 		return session.get(TableRecord, id)
 
+	def update_comments_by_reddit_id(self, reddit_id: str, text_prompt: str, session: Session):
+		statement = select(TableRecord) \
+			.where(TableRecord.RedditId == reddit_id)
 
+		tracking_responses = session.scalars(statement)
+		for tracking_response in tracking_responses:
+			if tracking_response.TextGenerationPrompt == '':
+				logging.info(f":: Updating all comments for {reddit_id}")
+				tracking_response.TextGenerationPrompt = text_prompt
+				session.commit()
+			else:
+				continue
 	def get_entity_by_id(self, Id: str) -> TableRecord:
 		session = Session(self._engine)
 		try:
@@ -81,4 +93,3 @@ class DataRepository:
 			return entity
 		finally:
 			session.close()
-			self._engine.dispose()
