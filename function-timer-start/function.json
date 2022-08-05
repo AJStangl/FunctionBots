@@ -6,7 +6,8 @@
       "type": "timerTrigger",
       "direction": "in",
       "schedule": "0 0/5 * * * *",
-      "monitor": true
+      "monitor": true,
+      "runOnStartUp": true
     },
     {
       "type": "queue",
