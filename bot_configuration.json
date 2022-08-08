@@ -36,7 +36,7 @@
   },
   {
     "Name": "PabloBot-GPT2",
-    "Model": "D:\\models\\large_pablo_bot",
+    "Model": "D:\\models\\experiment\\",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]

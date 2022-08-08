@@ -11,5 +11,5 @@ async def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> No
 	service: TextGenerationService = TextGenerationService()
 	devices = [i for i in range(torch.cuda.device_count())]
 
-	result = service.invoke(message, cuda_device=devices[-1])
+	result = service.invoke(message, cuda_device=devices[0])
 	responseMessage.set(result)

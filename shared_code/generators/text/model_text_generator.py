@@ -2,7 +2,6 @@ import logging
 import time
 
 import torch
-from torch import nn
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 
 from shared_code.helpers.tagging import Tagging
@@ -18,7 +17,7 @@ class ModelTextGenerator(ServiceContainer):
 			'prompt': None,
 			'temperature': 0.8,
 			'top_k': 40,
-			'top_p': .95,
+			'top_p': 1,
 			'do_sample': True,
 			'repetition_penalty': 1.08,
 			'stop_token': '<|endoftext|>'
@@ -38,7 +37,8 @@ class ModelTextGenerator(ServiceContainer):
 			encoded_prompt = tokenizer.encode(prompt_text, add_special_tokens=False, return_tensors="pt")
 
 			if len(encoded_prompt.data[0]) > self.text_generation_parameters['max_length']:
-				logging.info(f":: Size of Tensor {encoded_prompt.data[0]} > {self.text_generation_parameters['max_length']}. Rejecting Attempt to Process Input")
+				logging.info(
+					f":: Size of Tensor {encoded_prompt.data[0]} > {self.text_generation_parameters['max_length']}. Rejecting Attempt to Process Input")
 				return None
 
 			encoded_prompt = encoded_prompt.to(device)
@@ -48,14 +48,15 @@ class ModelTextGenerator(ServiceContainer):
 			model = model.to(device)
 
 			output_sequences = model.generate(
-				input_ids=encoded_prompt,
+				inputs=encoded_prompt,
 				max_length=self.text_generation_parameters['max_length'],
 				temperature=self.text_generation_parameters['temperature'],
 				top_k=self.text_generation_parameters['top_k'],
 				top_p=self.text_generation_parameters['top_p'],
 				repetition_penalty=self.text_generation_parameters['repetition_penalty'],
-				do_sample=self.text_generation_parameters['do_sample'],
-				num_return_sequences=self.text_generation_parameters['num_return_sequences'],
+				do_sample=True,
+				early_stopping=True,
+				num_return_sequences=self.text_generation_parameters['num_return_sequences']
 			)
 			text_generations = []
 
@@ -80,13 +81,13 @@ class ModelTextGenerator(ServiceContainer):
 			raise e
 		finally:
 			pass
-			# if model is not None:
-			# 	model = model.to("cpu")
-			# 	del model
-			# if encoded_prompt is not None:
-			# 	encoded_prompt = encoded_prompt.to("cpu")
-			# 	del encoded_prompt
-			# torch.cuda.empty_cache()
+		# if model is not None:
+		# 	model = model.to("cpu")
+		# 	del model
+		# if encoded_prompt is not None:
+		# 	encoded_prompt = encoded_prompt.to("cpu")
+		# 	del encoded_prompt
+		# torch.cuda.empty_cache()
 
 	@staticmethod
 	def validate_text_tensor(model_path, prompt):
