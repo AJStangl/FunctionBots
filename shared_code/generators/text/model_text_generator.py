@@ -17,7 +17,7 @@ class ModelTextGenerator(ServiceContainer):
 			'prompt': None,
 			'temperature': 0.8,
 			'top_k': 40,
-			'top_p': 1,
+			'top_p': .8,
 			'do_sample': True,
 			'repetition_penalty': 1.08,
 			'stop_token': '<|endoftext|>'
@@ -41,14 +41,16 @@ class ModelTextGenerator(ServiceContainer):
 					f":: Size of Tensor {encoded_prompt.data[0]} > {self.text_generation_parameters['max_length']}. Rejecting Attempt to Process Input")
 				return None
 
-			encoded_prompt = encoded_prompt.to(device)
+			generation_prompt = tokenizer([prompt_text], add_special_tokens=False, return_tensors="pt")
+
+			generation_prompt = generation_prompt.to(device)
 
 			model = GPT2LMHeadModel.from_pretrained(bot_config.Model)
 
 			model = model.to(device)
 
 			output_sequences = model.generate(
-				inputs=encoded_prompt,
+				inputs=generation_prompt['input_ids'],
 				max_length=self.text_generation_parameters['max_length'],
 				temperature=self.text_generation_parameters['temperature'],
 				top_k=self.text_generation_parameters['top_k'],
@@ -56,7 +58,9 @@ class ModelTextGenerator(ServiceContainer):
 				repetition_penalty=self.text_generation_parameters['repetition_penalty'],
 				do_sample=True,
 				early_stopping=True,
-				num_return_sequences=self.text_generation_parameters['num_return_sequences']
+				min_length=50,
+				num_return_sequences=self.text_generation_parameters['num_return_sequences'],
+				attention_mask=generation_prompt['attention_mask']
 			)
 			text_generations = []
 
@@ -66,12 +70,12 @@ class ModelTextGenerator(ServiceContainer):
 					raise Exception("Text No Good Try Again!")
 
 				text_generations.append(decoded_text)
-				logging.info(f"Generated {i}: {tokenizer.decode(output_sequences[i], skip_special_tokens=False)}")
+				print(f"Generated {i}: {tokenizer.decode(output_sequences[i], skip_special_tokens=False)}")
 
 			end_time = time.time()
 			duration = round(end_time - start_time, 1)
 
-			logging.info(f'{len(text_generations)} sample(s) of text generated in {duration} seconds.')
+			print(f'{len(text_generations)} sample(s) of text generated in {duration} seconds.')
 
 			return max(text_generations, key=len)
 

@@ -1,70 +1,70 @@
 [
   {
     "Name": "ChadNoctorBot-GPT2",
-    "Model": "D:\\models\\large_noctor_bot_2\\",
+    "Model": "D:\\workspaces\\gpt2\\dsProject\\notebooks\\experiment\\best_model",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "CoopBot-GPT2",
-    "Model": "D:\\models\\large_coop_bot\\",
+    "Model": "D:\\workspaces\\gpt2\\dsProject\\notebooks\\experiment\\best_model",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "GaryBot-GPT2",
-    "Model": "D:\\models\\large_legal_bot\\",
+    "Model": "D:\\workspaces\\gpt2\\dsProject\\notebooks\\experiment\\best_model",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "LarissaBot-GPT2",
-    "Model": "D:\\models\\large_larissa_bot\\",
+    "Model": "D:\\workspaces\\gpt2\\dsProject\\notebooks\\experiment\\best_model",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "LucyLoveBot-GPT2",
-    "Model": "D:\\models\\large_lucy_bot_2\\",
+    "Model": "D:\\workspaces\\gpt2\\dsProject\\notebooks\\experiment\\best_model",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "PabloBot-GPT2",
-    "Model": "D:\\models\\experiment\\",
+    "Model": "D:\\workspaces\\gpt2\\dsProject\\notebooks\\experiment\\best_model",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "ScarySteveBot-GPT2",
-    "Model": "D:\\models\\large_steve_bot_3\\",
+    "Model": "D:\\workspaces\\gpt2\\dsProject\\notebooks\\experiment\\best_model",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "SusanBot-GPT2",
-    "Model": "D:\\models\\large_flightattentdent_bot",
+    "Model": "D:\\workspaces\\gpt2\\dsProject\\notebooks\\experiment\\best_model",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "UpvotedBecause-GPT2",
-    "Model": "D:\\models\\large_all_bot\\",
+    "Model": "D:\\workspaces\\gpt2\\dsProject\\notebooks\\experiment\\best_model",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]
   },
   {
     "Name": "PlayHouseBot-Gpt2",
-    "Model": "D:\\models\\large_playhouse_bot\\",
+    "Model": "D:\\workspaces\\gpt2\\dsProject\\notebooks\\experiment\\best_model",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]
