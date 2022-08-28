@@ -1,6 +1,6 @@
 function RunBot
 {
-    .\venv\Scripts\activate.ps1
+    conda activate reddit-function-bot
     func start -p 7000 --verbose
 }
 

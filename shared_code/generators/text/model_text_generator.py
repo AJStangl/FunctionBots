@@ -3,7 +3,7 @@ import time
 
 import torch
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
-
+from simpletransformers.language_generation import LanguageGenerationModel
 from shared_code.helpers.tagging import Tagging
 from shared_code.services.service_container import ServiceContainer
 
@@ -48,19 +48,16 @@ class ModelTextGenerator(ServiceContainer):
 			model = GPT2LMHeadModel.from_pretrained(bot_config.Model)
 
 			model = model.to(device)
-
 			output_sequences = model.generate(
 				inputs=generation_prompt['input_ids'],
-				max_length=self.text_generation_parameters['max_length'],
-				temperature=self.text_generation_parameters['temperature'],
-				top_k=self.text_generation_parameters['top_k'],
-				top_p=self.text_generation_parameters['top_p'],
-				repetition_penalty=self.text_generation_parameters['repetition_penalty'],
+				max_length=1024,
+				min_length=100,
 				do_sample=True,
-				early_stopping=True,
-				min_length=50,
-				num_return_sequences=self.text_generation_parameters['num_return_sequences'],
-				attention_mask=generation_prompt['attention_mask']
+				top_k=40,
+				temperature=0.8,
+				repetition_penalty=1.08,
+				attention_mask=generation_prompt['attention_mask'],
+				stop_token='<|endoftext|>',
 			)
 			text_generations = []
 
@@ -85,13 +82,6 @@ class ModelTextGenerator(ServiceContainer):
 			raise e
 		finally:
 			pass
-		# if model is not None:
-		# 	model = model.to("cpu")
-		# 	del model
-		# if encoded_prompt is not None:
-		# 	encoded_prompt = encoded_prompt.to("cpu")
-		# 	del encoded_prompt
-		# torch.cuda.empty_cache()
 
 	@staticmethod
 	def validate_text_tensor(model_path, prompt):
