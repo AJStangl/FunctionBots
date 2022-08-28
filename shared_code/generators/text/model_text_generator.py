@@ -3,7 +3,6 @@ import time
 
 import torch
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
-from simpletransformers.language_generation import LanguageGenerationModel
 from shared_code.helpers.tagging import Tagging
 from shared_code.services.service_container import ServiceContainer
 
@@ -23,9 +22,7 @@ class ModelTextGenerator(ServiceContainer):
 			'stop_token': '<|endoftext|>'
 		}
 
-	def generate_text_with_no_wrapper(self, bot_username: str, prompt_text: str, cuda_device: int = 0):
-		model = None
-		encoded_prompt = None
+	def generate_text_with_no_wrapper(self, bot_username: str, prompt_text: str, cuda_device: int = 1) -> str:
 		start_time = time.time()
 		try:
 			bot_config = self.bot_configuration_manager.get_configuration_by_name(bot_username)
@@ -65,9 +62,9 @@ class ModelTextGenerator(ServiceContainer):
 				decoded_text = tokenizer.decode(output_sequences[i], skip_special_tokens=False)
 				if decoded_text in ['[removed]'] or decoded_text == "":
 					raise Exception("Text No Good Try Again!")
-
 				text_generations.append(decoded_text)
-				print(f"Generated {i}: {tokenizer.decode(output_sequences[i], skip_special_tokens=False)}")
+				decoded_text.replace(prompt_text, "")
+				print(f"Generated {i}: {decoded_text}")
 
 			end_time = time.time()
 			duration = round(end_time - start_time, 1)
