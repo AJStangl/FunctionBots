@@ -1,5 +1,6 @@
 import datetime
 import logging
+import os
 import re
 
 from asyncpraw import Reddit
@@ -18,7 +19,7 @@ from shared_code.storage_proxies.service_proxy import QueueServiceProxy
 class ReplyService:
 	def __init__(self):
 		self.logging = logging.getLogger(__name__)
-		self.bad_key_words = ["removed", "nouniqueideas007", "ljthefa"]
+		self.bad_key_words = os.environ["NegativeKeywords"].split(",")
 		self.reddit_manager: RedditManager = RedditManager()
 		self.queue_service: QueueServiceClient = QueueServiceProxy().service
 		self.repository: DataRepository = DataRepository()

@@ -25,7 +25,7 @@ class SubmissionService(ServiceContainer):
 			image_gen_prob: int = random.randint(1, 100)
 			logging.info(f":: Preparing Submission To {target_sub} for {bot_configuration.Name}")
 			prompt = self.tagging.get_random_new_submission_tag(subreddit=os.environ["SubNameOverride"])
-			result = model_text_generation.generate_text_with_no_wrapper(bot_username=bot_configuration.Name, prompt_text=prompt)
+			result = model_text_generation.generate_text_with_no_wrapper(bot_username=bot_configuration.Name, prompt_text=prompt, cuda_device=1)
 			extracted_prompt = self.tagging.extract_submission_from_generated_text(result)
 
 			logging.info(f":: Attempting Submission Post to {target_sub} for {bot_configuration.Name}")
