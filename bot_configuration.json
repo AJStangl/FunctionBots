@@ -36,7 +36,7 @@
   },
   {
     "Name": "PabloBot-GPT2",
-    "Model": "D:\\workspaces\\gpt2\\dsProject\\notebooks\\experiment_cont_5\\best_model\\",
+    "Model": " D:\\models\\mega_pablo_bot",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]
@@ -71,7 +71,7 @@
   },
   {
     "Name": "CrystalBot-GPT2",
-    "Model": "D:\\models\\large_only_fans_bot\\",
+    "Model": "D:\\models\\large_only_fans_bot_2\\",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]
