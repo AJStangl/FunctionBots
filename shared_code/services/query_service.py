@@ -36,7 +36,7 @@ class QueryService(ServiceContainer):
 
 			logging.info(f":: Submission Handling Complete for {bot_name}")
 			logging.info(f":: Fetching latest Comments For {bot_name}")
-			pending_comments = self.repository.search_for_pending("Comment", bot_name, limit=30)
+			pending_comments = self.repository.search_for_pending("Comment", bot_name, limit=1000)
 
 			end_time = datetime.now() + timedelta(minutes=10)
 			logging.info(f":: Handling comments for {bot_name} - Attempting for {end_time}...")

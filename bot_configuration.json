@@ -15,7 +15,7 @@
   },
   {
     "Name": "GaryBot-GPT2",
-    "Model": "D:\\models\\large_legal_bot\\",
+    "Model": "D:\\models\\mega_legal_bot\\",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]
@@ -36,7 +36,7 @@
   },
   {
     "Name": "PabloBot-GPT2",
-    "Model": " D:\\models\\mega_pablo_bot",
+    "Model": "D:\\models\\super_mega_pablo_bot\\",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]
@@ -50,7 +50,7 @@
   },
   {
     "Name": "SusanBot-GPT2",
-    "Model": "D:\\models\\large_flightattentdent_bot",
+    "Model": "D:\\models\\large_flightattentdent_bot\\",
     "SubReddits": [
      "CoopAndPabloPlayHouse"
     ]
@@ -71,7 +71,7 @@
   },
   {
     "Name": "CrystalBot-GPT2",
-    "Model": "D:\\models\\large_only_fans_bot_2\\",
+    "Model": "D:\\models\\mega_only_fans_bot\\",
     "SubReddits": [
       "CoopAndPabloPlayHouse"
     ]

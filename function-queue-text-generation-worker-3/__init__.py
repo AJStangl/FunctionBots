@@ -12,5 +12,4 @@ async def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> No
 	devices = [i for i in range(torch.cuda.device_count())]
 
 	result = service.invoke(message, cuda_device=devices[0])
-	# result = service.invoke(message, cuda_device=1)
 	responseMessage.set(result)
