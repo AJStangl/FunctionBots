@@ -47,7 +47,7 @@ class SubmissionService(ServiceContainer):
 					return True
 				except Exception as e:
 					logging.info(f":: Process Failed posting Image {e}")
-					return False
+					raise e
 			else:
 				try:
 					logging.info(f":: Sending Text Post To {target_sub} for {bot_configuration.Name}")
@@ -55,7 +55,7 @@ class SubmissionService(ServiceContainer):
 					await sub.submit(**extracted_prompt)
 				except Exception as e:
 					logging.info(f":: Process Failed {e}")
-					return False
+					raise e
 			return True
 		finally:
 			await self.close_reddit_instance()

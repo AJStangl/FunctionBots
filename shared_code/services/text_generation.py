@@ -15,7 +15,7 @@ class TextGenerationService(ServiceContainer):
 	def __init__(self):
 		super().__init__()
 
-	def invoke(self, message: func.QueueMessage, cuda_device=0) -> Optional[str]:
+	def invoke(self, message: func.QueueMessage, cuda_device=1) -> Optional[str]:
 		session: Session = self.repository.get_session()
 		try:
 			logging.info(f"Invoking Text Generation for Message ID: {message.id}")

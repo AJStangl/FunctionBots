@@ -1,5 +1,5 @@
 import logging
-
+import random
 import azure.functions as func
 import torch.cuda
 
@@ -11,6 +11,5 @@ async def main(message: func.QueueMessage, responseMessage: func.Out[str]) -> No
 	service: TextGenerationService = TextGenerationService()
 	devices = [i for i in range(torch.cuda.device_count())]
 
-	result = service.invoke(message, cuda_device=devices[1])
-	# result = service.invoke(message, cuda_device=1)
+	result = service.invoke(message, cuda_device=random.choice(devices))
 	responseMessage.set(result)

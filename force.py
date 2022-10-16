@@ -1,16 +1,18 @@
 import asyncio
 import logging
+import os
 
 from shared_code.helpers.mapping_models import Mapper
 from shared_code.models.bot_configuration import BotConfiguration
 from shared_code.services.new_submission_service import SubmissionService
 
-
+os.environ["SubNameOverride"] = "Guster"
 async def main() -> None:
+
 	logging.info(f":: Submission Generation Invocation Worker")
 	message_json = {
-		"Name":"CoopBot-GPT2",
-		"Model": "D:\\models\\large_coop_bot\\",
+		"Name":"PlayHouseBot-Gpt2",
+		"Model": "D:\\models\\super_mega_pablobot\\",
 		"SubReddit": "CoopAndPabloPlayHouse"
 	}
 
